@@ -1,2 +1,25 @@
 variant: fcos
 version: 1.5.0
+
+storage:
+  files:
+    - path: /etc/NetworkManager/system-connections/enp7s0.nmconnection
+      mode: 0600
+      contents:
+        inline: |
+          [connection]
+          id=enp7s0
+          type=ethernet
+          interface-name=enp7s0
+
+          [ethernet]
+          mtu=1450
+
+          [ipv4]
+          method=manual
+          address1=${private_ip}/32,${private_gateway}
+          route1=10.0.0.0/8,${private_gateway}
+          may-fail=false
+
+          [ipv6]
+          method=disabled

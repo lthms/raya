@@ -8,7 +8,6 @@
 #
 # Inputs:
 #   HCLOUD_TOKEN  (required)  Hetzner Cloud API token
-#   HCLOUD_LOCATION, HCLOUD_SERVER_TYPE                    [nbg1, cx22]
 set -euo pipefail
 
 cd "$(dirname "${0}")/.."

@@ -1,0 +1,46 @@
+[project]
+site_name = "raya IaC Documentation"
+site_description = "Infrastructure as Code for my cloud labs"
+site_author = "Thomas Letan"
+site_url = "https://lthms.github.io/raya"
+
+copyright = """
+&copy; 2026 by Thomas Letan is licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>
+"""
+
+[project.theme]
+language = "en"
+features = [
+    # https://zensical.org/docs/setup/header/#announcement-bar
+    "announce.dismiss",
+    # https://zensical.org/docs/authoring/code-blocks/#code-annotations
+    "content.code.annotate",
+    # https://zensical.org/docs/authoring/code-blocks/#code-copy-button
+    "content.code.copy",
+    # https://zensical.org/docs/authoring/code-blocks/#code-selection-button
+    "content.code.select",
+    # https://zensical.org/docs/authoring/footnotes/#footnote-tooltips
+    "content.footnote.tooltips",
+    # https://zensical.org/docs/setup/header/#automatic-hiding
+    "header.autohide",
+    # https://zensical.org/docs/setup/footer/#navigation
+    "navigation.footer",
+    # https://zensical.org/docs/setup/navigation/#section-index-pages
+    "navigation.indexes",
+    # https://zensical.org/docs/setup/navigation/#instant-navigation
+    "navigation.instant",
+    # https://zensical.org/docs/setup/navigation/#instant-prefetching
+    "navigation.instant.prefetch",
+    # https://zensical.org/docs/setup/navigation/#progress-indicator
+    "navigation.instant.progress",
+    # https://zensical.org/docs/setup/navigation/#navigation-path
+    "navigation.path",
+    # https://zensical.org/docs/setup/navigation/#navigation-sections
+    "navigation.sections",
+    # https://zensical.org/docs/setup/navigation/#back-to-top-button
+    "navigation.top",
+    # https://zensical.org/docs/setup/navigation/#anchor-tracking
+    "navigation.tracking",
+    # https://zensical.org/docs/setup/search/#search-highlighting
+    "search.highlight",
+]

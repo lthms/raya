@@ -1,0 +1,3 @@
+[tools]
+pipx = "latest"
+"pipx:zensical" = "0.0.24"

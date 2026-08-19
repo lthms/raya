@@ -15,6 +15,10 @@ terraform {
       source  = "poseidon/ct"
       version = "0.14.0"
     }
+    betteruptime = {
+      source  = "BetterStackHQ/better-uptime"
+      version = "0.21.13"
+    }
   }
 }
 
@@ -22,3 +26,6 @@ provider "hcloud" {
   token = var.hcloud_token
 }
 
+provider "betteruptime" {
+  api_token = var.betterstack_token
+}

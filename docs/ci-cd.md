@@ -49,6 +49,7 @@ deployment, several repository secrets were created:
 | ------------ | ---- |
 | `TF_API_TOKEN` | Authentication to HCP Terraform |
 | `HCLOUD_TOKEN` | Authentication to Hetzner Cloud |
+| `BETTERSTACK_TOKEN` | Authentication to BetterStack |
 
 These secrets are exposed to both provisioning workflows
 (`.github/workflows/provision-checks.yml` and

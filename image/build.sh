@@ -18,9 +18,6 @@ if [ -z "${HCLOUD_TOKEN:-}" ]; then
     exit 1
 fi
 
-LOCATION="${HCLOUD_LOCATION:-nbg1}"
-SERVER_TYPE="${HCLOUD_SERVER_TYPE:-cx22}"
-
 pin_field() {
     local field="${1}" value
     if ! value=$(jq -er ".${field}" <image/fcos.pin); then
@@ -66,6 +63,4 @@ fi
 
 packer init image/fcos.pkr.hcl
 packer build \
-    -var "location=${LOCATION}" \
-    -var "server_type=${SERVER_TYPE}" \
     image/fcos.pkr.hcl

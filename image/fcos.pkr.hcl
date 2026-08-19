@@ -13,18 +13,6 @@ variable "hcloud_token" {
   default   = env("HCLOUD_TOKEN")
 }
 
-variable "location" {
-  type    = string
-  default = "nbg1"
-}
-
-# Keep this the smallest type available: a snapshot can only be restored onto a
-# server whose disk is at least as large as the builder's.
-variable "server_type" {
-  type    = string
-  default = "cx22"
-}
-
 # image/fcos.pin is the single source of truth for which artifact we build.
 locals {
   pin = jsondecode(file("fcos.pin"))
@@ -49,8 +37,8 @@ source "hcloud" "fcos" {
   image  = "debian-12"
   rescue = "linux64"
 
-  location     = var.location
-  server_type  = var.server_type
+  location     = "hel1"
+  server_type  = "cx23"
   server_name  = "raya-image-builder"
   ssh_username = "root"
 

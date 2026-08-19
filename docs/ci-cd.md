@@ -20,17 +20,19 @@ This workflow runs on Pull Requests. It
   image Packer template.
 - Runs various Terraform built-in checks to ensure the correctness of the
   committed files.
-- Runs `terraform plan` to show the impact of the change on production. It is
-  triggered by pushes to `main` as well as by pull requests, so a change is
-  checked before it lands.
+- Runs `terraform plan` to show the impact of the change on production, so it
+  is reviewed before it lands.
 
-This is a read-only workflow. Not deployment happens when it runs.
+This is a read-only workflow. No deployment happens when it runs.
 
 ### `provision.yml`
 
-This workflows runs on every push to the `main` branch. It
+This workflow runs on every push to the `main` branch. It
 
 - Builds the Fedora CoreOS image used pervasively in `raya`.
+- Runs `terraform apply` to actually provision `raya`. This job needs the
+  previous one to have finished to gracefully handle a change in the Fedora
+  CoreOS image.
 
 ## Terraform Backend
 
@@ -48,8 +50,9 @@ deployment, several repository secrets were created:
 | `TF_API_TOKEN` | Authentication to HCP Terraform |
 | `HCLOUD_TOKEN` | Authentication to Hetzner Cloud |
 
-These secrets are exposed to the `terraform` workflow
-(`.github/workflows/terraform.yml`) as environment variables.
+These secrets are exposed to both provisioning workflows
+(`.github/workflows/provision-checks.yml` and
+`.github/workflows/provision.yml`) as environment variables.
 
 `TF_API_TOKEN` is fed to Terraform via the `TF_TOKEN_app_terraform_io`
 environment variable (since we are using app.terraform.io)[^doc].
@@ -63,6 +66,11 @@ by setting `TF_VAR_hcloud_token`[^local].
 TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
 ```
 
+`HCLOUD_TOKEN` is also passed under its own name to the Packer jobs, where
+`image/build.sh` queries the Hetzner API with it and Packer authenticates the
+build. That use has nothing to do with Terraform variables, which is why the
+same secret appears under two different names depending on the job.
+
 !!! warning
 
     Because the workspace uses `Local` execution, `terraform plan` runs on the
@@ -74,7 +82,7 @@ TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
     `user_data`, key fingerprints) may still appear in cleartext by default.
     Wrap any expression carrying a secret in `sensitive()` when its value does
     not already derive from a sensitive variable. For instance, `user_data =
-    sensitive(templatefile(...))`.
+    sensitive(data.ct_config.control_plane.rendered)`.
 
 [^doc]: See [Terraform documentation on the
     subject](https://developer.hashicorp.com/terraform/cli/config/config-file#environment-variable-credentials)

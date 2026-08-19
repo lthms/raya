@@ -12,14 +12,25 @@ is re-generated and published every time a new commit lands on the `main`
 branch. It needs no repository secret: it authenticates to GitHub Pages through
 OIDC, thanks to the `id-token: write` permission.
 
-### `terraform.yml`
+### `provision-checks.yml`
 
-This workflow runs various Terraform built-in checks to ensure the correctness
-of the committed files, then runs `terraform plan` to show the impact of the
-change on production. It is triggered by pushes to `main` as well as by pull
-requests, so a change is checked before it lands.
+This workflow runs on Pull Requests. It
 
-Nothing is ever applied automatically as of yet.
+- Runs various Packer built-in checks to ensure the correctness of the CoreOS
+  image Packer template.
+- Runs various Terraform built-in checks to ensure the correctness of the
+  committed files.
+- Runs `terraform plan` to show the impact of the change on production. It is
+  triggered by pushes to `main` as well as by pull requests, so a change is
+  checked before it lands.
+
+This is a read-only workflow. Not deployment happens when it runs.
+
+### `provision.yml`
+
+This workflows runs on every push to the `main` branch. It
+
+- Builds the Fedora CoreOS image used pervasively in `raya`.
 
 ## Terraform Backend
 

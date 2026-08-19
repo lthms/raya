@@ -8,6 +8,12 @@ copyright = """
 &copy; 2026 by Thomas Letan is licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>
 """
 
+nav = [
+  "index.md",
+  { "Infrastructure" = ["cluster-provisioning.md"] },
+  "ci-cd.md",
+]
+
 [project.theme]
 language = "en"
 features = [

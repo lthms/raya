@@ -11,6 +11,10 @@ terraform {
       source  = "hetznercloud/hcloud"
       version = "1.64.0"
     }
+    ct = {
+      source  = "poseidon/ct"
+      version = "0.14.0"
+    }
   }
 }
 

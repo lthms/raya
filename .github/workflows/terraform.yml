@@ -1,0 +1,25 @@
+name: Terraform
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.8
+      - run: terraform fmt -check -recursive
+      - run: terraform init
+      - run: terraform validate
+      - run: terraform plan -no-color

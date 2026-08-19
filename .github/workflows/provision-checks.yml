@@ -22,6 +22,7 @@ jobs:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
       TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
+      TF_VAR_betterstack_token: ${{ secrets.BETTERSTACK_TOKEN }}
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
     steps:
       - uses: actions/checkout@v5

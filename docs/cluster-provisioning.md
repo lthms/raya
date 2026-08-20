@@ -84,3 +84,28 @@ standard value) does not fail in an explicit way and can even look healthy
 
 [nm]: https://networkmanager.dev/docs/api/latest/nm-settings-keyfile.html
 [hetzdoc]: https://docs.hetzner.com/networking/networks/server-configuration/
+
+!!! note
+
+    Any systemd unit which requires the private interface to be configured
+    should order itself after `network-online.target` (and `Wants=` it).
+    The `may-fail=false` in the keyfile’s `[ipv4]` section is what makes
+    that target wait for this interface in particular.
+
+    ```ini
+    [Unit]
+    Description=Something that needs the private network
+    Wants=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/bin/ping -c1 10.0.1.10
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+    `Wants=` and `After=` are both needed: the first pulls the target into the
+    boot, the second orders against it. `After=` alone silently does nothing if
+    nothing else requested the target.

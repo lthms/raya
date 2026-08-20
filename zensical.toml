@@ -10,7 +10,7 @@ copyright = """
 
 nav = [
   "index.md",
-  { "Infrastructure" = ["cluster-provisioning.md"] },
+  { "Infrastructure" = ["cluster-provisioning.md", "network.md"] },
   { "Monitoring" = ["status-page.md"] },
   "ci-cd.md",
 ]

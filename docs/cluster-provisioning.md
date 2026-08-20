@@ -43,7 +43,7 @@ building the plan. This configuration file is transpiled to an Ignition config
 using the [`poseidon/ct` provider][ct]. The Ignition config is fed to the VM by
 passing it via the `user_data` field of a new `hcloud_server` resource.
 
-!!! important
+!!! warning
 
     Ignition configs are likely to embed secrets. Terraform does not treat
     `user_data` as a sensitive field, and `ct` does not mark its `rendered`
@@ -61,3 +61,26 @@ passing it via the `user_data` field of a new `hcloud_server` resource.
 The control plane is provisioned from the Butane config file
 `control_plane.bu.tftpl`. For now, it runs a bare CoreOS image without any
 user, so while the VM does get a public IP, there is no way to log into it.
+
+The control plane VM is attached to the `nodes` subnet defined in `network.tf`
+(see [Private network](network.md) for more details about the subnet itself).
+Attaching a VM in Terraform only gets it a second network interface. That is
+not enough in and of itself, as by default CoreOS does not configure that
+interface.
+
+As a consequence, `control_plane.bu.tftpl` ships a NetworkManager [keyfile][nm]
+for it. The interface is `enp7s0` (see [Hetzner documentation][hetzdoc]). The
+address is static, `10.0.1.10/32` with `10.0.0.1` as gateway. This is injected
+by Terraform to avoid duplicating the information between the `cluster.tf` file
+(when attaching the control plane to the subnet) and this file. An explicit
+route sends `10.0.0.0/8` through the gateway. This makes other subnets of the
+network (if we ever create one) reachable and not just this one. IPv6 is
+disabled.
+
+Finally, the MTU is set to `1450` (Hetzner’s private network MTU). The MTU is
+the one to get right. Leaving it to a default value (1,500 bytes being the most
+standard value) does not fail in an explicit way and can even look healthy
+(small packets flow). Large transfers would hang, though.
+
+[nm]: https://networkmanager.dev/docs/api/latest/nm-settings-keyfile.html
+[hetzdoc]: https://docs.hetzner.com/networking/networks/server-configuration/

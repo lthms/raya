@@ -1,1 +1,44 @@
 {% extends "base.bu.j2" %}
+
+{% block storage_files %}
+- path: /etc/rancher/k3s/config.yaml
+  mode: 0600
+  contents:
+    inline: |
+      token: "{{ k3s_token }}"
+      bind-address: {{ private_ip }}
+      node-ip: {{ private_ip }}
+      advertise-address: {{ private_ip }}
+      flannel-iface: enp7s0
+{% endblock %}
+
+{% block systemd_units %}
+- name: k3s.service
+  enabled: true
+  contents: |
+    [Unit]
+    Description=Lightweight Kubernetes
+    Documentation=https://k3s.io
+    Wants=network-online.target
+    After=network-online.target
+    Requires=k3s-init.service
+    After=k3s-init.service
+
+    [Service]
+    Type=notify
+    ExecStartPre=-/sbin/modprobe br_netfilter
+    ExecStartPre=-/sbin/modprobe overlay
+    ExecStart=/usr/local/bin/k3s server
+    KillMode=process
+    Delegate=yes
+    Restart=always
+    RestartSec=5s
+    TimeoutStartSec=0
+    LimitNOFILE=1048576
+    LimitNPROC=infinity
+    LimitCORE=infinity
+    TasksMax=infinity
+
+    [Install]
+    WantedBy=multi-user.target
+{% endblock %}

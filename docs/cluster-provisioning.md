@@ -38,10 +38,12 @@ and `cluster.tf` all read it, making it the source of truth everybody trusts.
 
 All the VMs that make up `raya` are declared via the same pattern inside the
 `cluster.tf` file. The starting point is a Butane configuration file, written
-as a Terraform template file so that we can inject Terraform variables when
-building the plan. This configuration file is transpiled to an Ignition config
-using the [`poseidon/ct` provider][ct]. The Ignition config is fed to the VM by
-passing it via the `user_data` field of a new `hcloud_server` resource.
+as a Jinja template file thanks to the [`NikolaLohinski/jinja`](jinja]
+provider. Using templates allows us (1) to share configuration snippets among
+the various VMs, and (2) to inject Terraform variables when building the plan.
+This configuration file is transpiled to an Ignition config using the
+[`poseidon/ct` provider][ct]. The Ignition config is fed to the VM by passing
+it via the `user_data` field of a new `hcloud_server` resource.
 
 !!! warning
 
@@ -55,6 +57,7 @@ passing it via the `user_data` field of a new `hcloud_server` resource.
     `sensitive()` built-in, in order to avoid leaking secrets via the CI logs.
 
 [ct]: https://registry.terraform.io/providers/poseidon/ct/latest/docs
+[jinja]: https://registry.terraform.io/providers/NikolaLohinski/jinja/latest/docs
 
 ### Shared configuration
 

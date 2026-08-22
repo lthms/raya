@@ -4,7 +4,7 @@ version: 1.5.0
 passwd:
   users:
     - name: core
-      ssh_authorized_keys: ${authorized_keys}
+      ssh_authorized_keys: {{ authorized_keys | tojson }}
 
 storage:
   files:
@@ -22,8 +22,8 @@ storage:
 
           [ipv4]
           method=manual
-          address1=${private_ip}/32,${private_gateway}
-          route1=10.0.0.0/8,${private_gateway}
+          address1={{ private_ip }}/32,{{ private_gateway }}
+          route1=10.0.0.0/8,{{ private_gateway }}
           may-fail=false
 
           [ipv6]

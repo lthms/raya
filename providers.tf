@@ -23,6 +23,10 @@ terraform {
       source  = "hashicorp/http"
       version = "3.5.0"
     }
+    jinja = {
+      source  = "NikolaLohinski/jinja"
+      version = "2.4.3"
+    }
   }
 }
 

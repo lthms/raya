@@ -31,6 +31,14 @@ data "jinja_template" "control_plane" {
         replace(trimprefix(local.control_plane_volume_device, "/"), "-", "\\x2d"),
         "/", "-",
       ))
+
+      # Seeded into /var/lib/rancher/k3s/server/tls before k3s first starts, so
+      # the cluster's trust root comes from here rather than from the node. See
+      # pki.tf.
+      server_ca_cert = tls_self_signed_cert.server_ca.cert_pem
+      server_ca_key  = tls_private_key.server_ca.private_key_pem
+      client_ca_cert = tls_self_signed_cert.client_ca.cert_pem
+      client_ca_key  = tls_private_key.client_ca.private_key_pem
     }))
   }
 

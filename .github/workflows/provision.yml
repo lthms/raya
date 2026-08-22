@@ -19,6 +19,7 @@ jobs:
           version: latest
       - run: ./image/build.sh
   apply:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: image
     env:

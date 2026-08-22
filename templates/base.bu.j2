@@ -28,3 +28,52 @@ storage:
 
           [ipv6]
           method=disabled
+    - path: /etc/tmpfiles.d/k3s.conf
+      mode: 0644
+      contents:
+        inline: |
+          Z /var/usrlocal/bin
+    - path: /usr/local/bin/k3s-init.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          CONFIG_DIR="/etc/rancher/k3s/config.yaml.d"
+
+          public_ip="$(ip -4 -o addr show enp1s0 | awk '{print $4}' | cut -d/ -f1)"
+
+          if [ -z "${public_ip}" ]; then
+              echo "could not determine this node's public address" >&2
+              exit 1
+          fi
+
+          echo "public address: ${public_ip}"
+
+          mkdir -p "${CONFIG_DIR}"
+          cat >"${CONFIG_DIR}/50-public-ip.yaml" <<EOF
+          node-external-ip: "${public_ip}"
+          EOF
+{% filter trim|indent(4, true) %}{% block storage_files %}{% endblock %}{% endfilter %}
+
+systemd:
+  units:
+    - name: k3s-init.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Discover this node's public address for k3s
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/local/bin/k3s-init.sh
+        Restart=on-failure
+        RestartSec=5s
+
+        [Install]
+        WantedBy=multi-user.target
+{% filter trim|indent(4, true) %}{% block systemd_units %}{% endblock %}{% endfilter %}

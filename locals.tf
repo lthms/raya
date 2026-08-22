@@ -2,6 +2,13 @@ locals {
   fcos_pin     = jsondecode(file("${path.module}/image/fcos.pin"))
   fcos_version = local.fcos_pin.version
 
+  k3s_pin     = jsondecode(file("${path.module}/image/k3s.pin"))
+  k3s_version = local.k3s_pin.version
+
+  # Hetzner label values reject the `+` in the release tag. image/fcos.pkr.hcl
+  # and image/build.sh apply the same rewrite when they stamp the snapshot.
+  k3s_version_label = replace(local.k3s_version, "+", "-")
+
   control_plane_server_type = "cx23"
   control_plane_location    = "hel1"
 

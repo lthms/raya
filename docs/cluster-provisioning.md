@@ -30,6 +30,11 @@ the stream (among `stable`, `testing`, or `next`, we use `stable` for now),
 version and sha256 hash of the image. `image/fcos.pkr.hcl`, `image/build.sh`
 and `cluster.tf` all read it, making it the source of truth everybody trusts.
 
+Once the image is burnt onto the disk, the latter is mounted and `k3s` is
+copied in `/usrlocal/bin`, ready to be used. Which versioned is provisioned is
+decided by the `image/k3s.pin`, using the same logic applied to
+`image/fcos.pin`.
+
 [fcos]: https://fedoraproject.org/coreos/
 [hcloud]: https://www.hetzner.com/cloud/
 [Packer]: https://developer.hashicorp.com/packer
@@ -38,7 +43,7 @@ and `cluster.tf` all read it, making it the source of truth everybody trusts.
 
 All the VMs that make up `raya` are declared via the same pattern inside the
 `cluster.tf` file. The starting point is a Butane configuration file, written
-as a Jinja template file thanks to the [`NikolaLohinski/jinja`](jinja]
+as a Jinja template file thanks to the [`NikolaLohinski/jinja`][jinja]
 provider. Using templates allows us (1) to share configuration snippets among
 the various VMs, and (2) to inject Terraform variables when building the plan.
 This configuration file is transpiled to an Ignition config using the

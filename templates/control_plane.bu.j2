@@ -10,6 +10,92 @@
       node-ip: {{ private_ip }}
       advertise-address: {{ private_ip }}
       flannel-iface: enp7s0
+
+- path: /etc/rancher/k3s/tls/server-ca.crt
+  mode: 0644
+  contents:
+    inline: |
+      {{ server_ca_cert | indent(6) }}
+- path: /etc/rancher/k3s/tls/server-ca.key
+  mode: 0600
+  contents:
+    inline: |
+      {{ server_ca_key | indent(6) }}
+- path: /etc/rancher/k3s/tls/client-ca.crt
+  mode: 0644
+  contents:
+    inline: |
+      {{ client_ca_cert | indent(6) }}
+- path: /etc/rancher/k3s/tls/client-ca.key
+  mode: 0600
+  contents:
+    inline: |
+      {{ client_ca_key | indent(6) }}
+
+- path: /usr/local/bin/k3s-seed-pki.sh
+  mode: 0755
+  contents:
+    inline: |
+      #!/usr/bin/env bash
+      # Make the data directory on the volume agree with the Ignition config: put
+      # the CAs in place, and re-bootstrap the node when the config has moved on.
+      # Ignition cannot do this itself — the volume is not mounted when it runs.
+      #
+      # When neither has changed, this is a no-op, so an ordinary reboot costs
+      # nothing.
+      set -euo pipefail
+
+      SRC=/etc/rancher/k3s/tls
+      DATA_DIR=/var/lib/rancher/k3s
+      DST="${DATA_DIR}/server/tls"
+      CONFIG=/etc/rancher/k3s/config.yaml
+      TOKEN_FILE="${DATA_DIR}/server/token"
+
+      configured_token="$(sed -n 's/^token: "\(.*\)"$/\1/p' "${CONFIG}")"
+      if [ -z "${configured_token}" ]; then
+          echo "no token found in ${CONFIG}" >&2
+          exit 1
+      fi
+
+      reason=""
+
+      # k3s records its own token in K10<hash>::server:<secret> form. On a fresh
+      # volume the file is absent, which is not a change.
+      if [ -f "${TOKEN_FILE}" ]; then
+          recorded="$(cat "${TOKEN_FILE}")"
+          recorded="${recorded#*::}"
+          recorded="${recorded#server:}"
+          if [ "${recorded}" != "${configured_token}" ]; then
+              reason="the cluster token changed"
+          fi
+      fi
+
+      if [ -z "${reason}" ]; then
+          for f in server-ca.crt server-ca.key client-ca.crt client-ca.key; do
+              if ! cmp -s "${SRC}/${f}" "${DST}/${f}"; then
+                  reason="the CA material changed"
+                  break
+              fi
+          done
+      fi
+
+      if [ -z "${reason}" ]; then
+          echo "volume already agrees with the config, nothing to do"
+          exit 0
+      fi
+
+      echo "re-bootstrapping this node: ${reason}"
+
+      # server/ holds the datastore, the CAs and everything signed by them;
+      # agent/ holds this node's own kubelet certificates, which were issued by
+      # those same CAs. Both are stale.
+      rm -rf "${DATA_DIR}/server" "${DATA_DIR}/agent"
+      mkdir -p "${DST}"
+
+      install -o 0 -g 0 -m 0644 "${SRC}/server-ca.crt" "${DST}/server-ca.crt"
+      install -o 0 -g 0 -m 0600 "${SRC}/server-ca.key" "${DST}/server-ca.key"
+      install -o 0 -g 0 -m 0644 "${SRC}/client-ca.crt" "${DST}/client-ca.crt"
+      install -o 0 -g 0 -m 0600 "${SRC}/client-ca.key" "${DST}/client-ca.key"
 {% endblock %}
 
 {% block systemd_units %}
@@ -30,14 +116,34 @@
   contents: |
     [Unit]
     Description=Mount the k3s data volume
+    DefaultDependencies=no
     Requires=mkfs-k3s-volume.service
-    After=mkfs-k3s-volume.service
+    After=mkfs-k3s-volume.service local-fs.target
     Before=k3s-setup.target
+    Conflicts=umount.target
+    Before=umount.target
 
     [Mount]
     What={{ k3s_volume_device }}
     Where=/var/lib/rancher/k3s
     Type=xfs
+
+    [Install]
+    RequiredBy=k3s-setup.target
+
+- name: k3s-seed-pki.service
+  enabled: true
+  contents: |
+    [Unit]
+    Description=Reconcile the k3s data directory with the Ignition config
+    Requires=var-lib-rancher-k3s.mount
+    After=var-lib-rancher-k3s.mount
+    Before=k3s-setup.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    ExecStart=/usr/local/bin/k3s-seed-pki.sh
 
     [Install]
     RequiredBy=k3s-setup.target

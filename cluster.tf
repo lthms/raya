@@ -22,6 +22,15 @@ data "jinja_template" "control_plane" {
       private_gateway = local.private_gateway
       authorized_keys = local.authorized_keys
       k3s_token       = random_password.k3s_token.result
+
+      k3s_volume_device = local.control_plane_volume_device
+      # systemd derives a .device unit name from the path by escaping `-` as
+      # `\x2d` and turning `/` into `-`; the ordering in the units below needs
+      # that name, and there is no way to ask systemd for it from here.
+      k3s_volume_device_unit = format("%s.device", replace(
+        replace(trimprefix(local.control_plane_volume_device, "/"), "-", "\\x2d"),
+        "/", "-",
+      ))
     }))
   }
 
@@ -45,4 +54,19 @@ resource "hcloud_server_network" "control_plane" {
   server_id = hcloud_server.control_plane.id
   subnet_id = hcloud_network_subnet.nodes.id
   ip        = local.control_plane_private_ip
+}
+
+# The cluster's datastore and PKI living under /var/lib/rancher/k3s
+resource "hcloud_volume" "control_plane_k3s" {
+  name     = "control-plane-k3s"
+  size     = local.control_plane_volume_size
+  location = local.control_plane_location
+}
+
+resource "hcloud_volume_attachment" "control_plane_k3s" {
+  volume_id = hcloud_volume.control_plane_k3s.id
+  server_id = hcloud_server.control_plane.id
+
+  # The mount unit in the Butane config owns this, not the guest agent.
+  automount = false
 }

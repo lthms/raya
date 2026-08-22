@@ -59,6 +59,20 @@ storage:
 
 systemd:
   units:
+    # Everything that has to be true before k3s can start
+    - name: k3s-setup.target
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Prerequisites for running k3s
+        Requires=systemd-tmpfiles-setup.service
+        After=systemd-tmpfiles-setup.service
+        Wants=network-online.target
+        After=network-online.target
+
+        [Install]
+        WantedBy=multi-user.target
+
     - name: k3s-init.service
       enabled: true
       contents: |
@@ -66,6 +80,7 @@ systemd:
         Description=Discover this node's public address for k3s
         Wants=network-online.target
         After=network-online.target
+        Before=k3s-setup.target
 
         [Service]
         Type=oneshot
@@ -75,5 +90,5 @@ systemd:
         RestartSec=5s
 
         [Install]
-        WantedBy=multi-user.target
+        RequiredBy=k3s-setup.target
 {% filter trim|indent(4, true) %}{% block systemd_units %}{% endblock %}{% endfilter %}

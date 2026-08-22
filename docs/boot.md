@@ -1,30 +1,6 @@
 # Boot sequence
 
-That boot sequence is roughly described by the following schema.
-
-```mermaid
-graph TB
-  subgraph ignition["Ignition · initramfs · first boot only"]
-    fetch["Read config from<br/>hcloud user_data"]
-    growfs["Grow the root partition<br/>to fill the disk"]
-    run["Run the config"]
-    fetch --> growfs --> run
-  end
-
-  subgraph systemd["systemd · every boot"]
-    tmpfiles["systemd-tmpfiles-setup<br/>restores the SELinux context<br/>of /var/usrlocal/bin"]
-    nm["NetworkManager<br/>enp7s0 static · public NIC by DHCP"]
-    online(["network-online.target"])
-    init["k3s-init.service<br/>writes config.yaml.d/50-public-ip.yaml"]
-    k3s["k3s.service<br/>k3s server"]
-    tmpfiles --> nm --> online --> init --> k3s
-  end
-
-  run --> tmpfiles
-
-  classDef onceOnly stroke-dasharray: 5 5
-  class ignition onceOnly
-```
+## Shared between the control plane and the agents
 
 The boot sequence of `raya`’s VMs consists in two distinct phases. The first
 one only happens during the first boot directly following the provisioning of
@@ -32,7 +8,8 @@ the VM: the OS reads the supplied Ignition config (from `user_data`) and runs
 it. This is part of [the provisioning of the VM](cluster-provisioning.md).
 Then, the regular boot sequence proceeds.
 
-In a nutshell,
+The control plane and the agents share a common prefix for their boot sequence,
+namely:
 
 1. Using `systemd-tmpfiles`, we label the `k3s` binary provided with the image
    to align it with the [SELinux policy][fcos-selinux] Fedora CoreOS enforces.
@@ -49,6 +26,57 @@ In a nutshell,
    the setup by retrieving the public IP and setting it as the external IP of
    the node. We configure the service to retry in case of failure instead of
    modifying the NM configuration for the public interface.
-4. Finally, we start k3s.
+
+Additionally, we have introduced a systemd target called `k3s-setup` that is
+expected to be used by the control plane and the agents’ units to gate the
+launch of the k3s daemon.
 
 [fcos-selinux]: https://docs.fedoraproject.org/en-US/fedora-coreos/selinux/
+
+## Control plane
+
+The control plane boot sequence is summarized in the following diagram.
+
+```mermaid
+graph TB
+  subgraph terraform["Terraform · after the server is created"]
+    attach_nic["Attach the private network interface"]
+    attach_vol["Attach the volume"]
+  end
+
+  subgraph systemd["systemd · every boot"]
+    tmpfiles["systemd-tmpfiles-setup<br/>restores the SELinux context<br/>of /var/usrlocal/bin"]
+    nm["NetworkManager<br/>enp7s0 static · public interface by DHCP"]
+    online(["network-online.target"])
+    init["k3s-init.service<br/>writes config.yaml.d/50-public-ip.yaml"]
+    mkfs["mkfs-k3s-volume.service<br/>creates a filesystem<br/>if the device has none"]
+    mount["var-lib-rancher-k3s.mount<br/>/var/lib/rancher/k3s"]
+    setup(["k3s-setup.target"])
+    k3s["k3s.service<br/>k3s server"]
+
+    nm --> online --> init
+    mkfs --> mount
+
+    tmpfiles --> setup
+    online --> setup
+    init --> setup
+    mount --> setup
+    setup --> k3s
+  end
+
+  attach_nic -.->|enp7s0 appears| nm
+  attach_vol -.->|device appears| mkfs
+
+  classDef shared stroke:#3f7fbf,stroke-width:2px
+  classDef control stroke:#bf7f3f,stroke-width:2px
+
+  class attach_nic,tmpfiles,nm,online,init,setup,legend_shared shared
+  class attach_vol,mkfs,mount,k3s,legend_control control
+```
+
+While agents are stateless, the control plane VM carries the cluster datastore
+and its KPI. In order for them to survive a VM replacement, they are moved to
+an external volume. When the volume is first created, it is bare and needs to
+be formatted. Once it is node, it also needs to be mounted, and alone then can
+`k3s` be started (if they other members of the `k3s-setup` target are ready as
+well, obviously).

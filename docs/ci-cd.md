@@ -34,6 +34,22 @@ This workflow runs on every push to the `main` branch. It
   previous one to have finished to gracefully handle a change in the Fedora
   CoreOS image.
 
+Additionally, this workflow can be run manually from the GitHub interface. It
+can be run against any branch, not only `main`. If it is run against a branch
+different than `main`, only the first job (building the provisioning image) is
+run.
+
+This is useful when the image needs to be reconstructed following a dependency
+bump (*e.g.*, upgrading to a new `k3s` version). In that case, `terraform plan`
+will fail because the selectors of `data.hcloud_image.fcos` won’t resolve (the
+image does not exist yet). Building a new image does not affect the production,
+and unblock running `terraform apply`.
+
+!!! note
+
+    Images are snapshots stored in Hetzner Cloud, and they are never deleted by
+    this IaC. Bookkeeping remains manual for now.
+
 ## Terraform Backend
 
 Terraform state is hosted on [HCP Terraform](https://app.terraform.io), under

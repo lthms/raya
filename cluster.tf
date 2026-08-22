@@ -1,7 +1,12 @@
 data "hcloud_image" "fcos" {
-  with_selector     = "managed_by=raya,os=fcos,fcos_version=${local.fcos_version}"
+  with_selector     = "managed_by=raya,os=fcos,fcos_version=${local.fcos_version},k3s_version=${local.k3s_version_label}"
   with_architecture = "x86"
   most_recent       = true
+}
+
+resource "random_password" "k3s_token" {
+  length  = 48
+  special = false
 }
 
 data "jinja_template" "control_plane" {
@@ -12,11 +17,12 @@ data "jinja_template" "control_plane" {
 
   context {
     type = "json"
-    data = jsonencode({
+    data = sensitive(jsonencode({
       private_ip      = local.control_plane_private_ip
       private_gateway = local.private_gateway
       authorized_keys = local.authorized_keys
-    })
+      k3s_token       = random_password.k3s_token.result
+    }))
   }
 
   strict_undefined = true

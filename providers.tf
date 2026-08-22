@@ -27,6 +27,10 @@ terraform {
       source  = "NikolaLohinski/jinja"
       version = "2.4.3"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "3.9.0"
+    }
   }
 }
 

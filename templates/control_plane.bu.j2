@@ -13,16 +13,43 @@
 {% endblock %}
 
 {% block systemd_units %}
+- name: mkfs-k3s-volume.service
+  contents: |
+    [Unit]
+    Description=Create a filesystem on the k3s volume if it has none
+    After={{ k3s_volume_device_unit }}
+    Requires={{ k3s_volume_device_unit }}
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    ExecStart=/bin/bash -c 'blkid {{ k3s_volume_device }} | grep -q TYPE || mkfs.xfs {{ k3s_volume_device }}'
+
+- name: var-lib-rancher-k3s.mount
+  enabled: true
+  contents: |
+    [Unit]
+    Description=Mount the k3s data volume
+    Requires=mkfs-k3s-volume.service
+    After=mkfs-k3s-volume.service
+    Before=k3s-setup.target
+
+    [Mount]
+    What={{ k3s_volume_device }}
+    Where=/var/lib/rancher/k3s
+    Type=xfs
+
+    [Install]
+    RequiredBy=k3s-setup.target
+
 - name: k3s.service
   enabled: true
   contents: |
     [Unit]
     Description=Lightweight Kubernetes
     Documentation=https://k3s.io
-    Wants=network-online.target
-    After=network-online.target
-    Requires=k3s-init.service
-    After=k3s-init.service
+    Requires=k3s-setup.target
+    After=k3s-setup.target
 
     [Service]
     Type=notify

@@ -4,14 +4,27 @@ data "hcloud_image" "fcos" {
   most_recent       = true
 }
 
-data "ct_config" "control_plane" {
-  content = templatefile("${path.module}/control_plane.bu.tftpl", {
-    private_ip      = local.control_plane_private_ip
-    private_gateway = local.private_gateway
+data "jinja_template" "control_plane" {
+  source {
+    template  = file("${path.module}/templates/control_plane.bu.j2")
+    directory = "${path.module}/templates"
+  }
 
-    authorized_keys = jsonencode(local.authorized_keys)
-  })
-  strict = true
+  context {
+    type = "json"
+    data = jsonencode({
+      private_ip      = local.control_plane_private_ip
+      private_gateway = local.private_gateway
+      authorized_keys = local.authorized_keys
+    })
+  }
+
+  strict_undefined = true
+}
+
+data "ct_config" "control_plane" {
+  content = data.jinja_template.control_plane.result
+  strict  = true
 }
 
 resource "hcloud_server" "control_plane" {

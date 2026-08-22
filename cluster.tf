@@ -8,6 +8,8 @@ data "ct_config" "control_plane" {
   content = templatefile("${path.module}/control_plane.bu.tftpl", {
     private_ip      = local.control_plane_private_ip
     private_gateway = local.private_gateway
+
+    authorized_keys = jsonencode(local.authorized_keys)
   })
   strict = true
 }

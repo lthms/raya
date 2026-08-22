@@ -13,4 +13,10 @@ locals {
   # range, not of the subnet.
   private_gateway          = cidrhost(local.network_ip_range, 1)
   control_plane_private_ip = cidrhost(local.nodes_ip_range, 10)
+
+  authorized_users = ["lthms"]
+  authorized_keys = sort(flatten([
+    for user in local.authorized_users :
+    compact(split("\n", data.http.github_keys[user].response_body))
+  ]))
 }

@@ -19,6 +19,10 @@ terraform {
       source  = "BetterStackHQ/better-uptime"
       version = "0.21.13"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = "3.5.0"
+    }
   }
 }
 

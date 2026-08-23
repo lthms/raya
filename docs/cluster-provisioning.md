@@ -168,3 +168,40 @@ may join. The hash is what removes the need to trust the endpoint: on first
 contact the agent downloads the CA bundle from the control plane *without*
 validating the certificate it is offered, hashes what it received, and compares
 that against the hash embedded in its own token.
+
+## Public DNS
+
+When it comes to DNS, `raya`’s setup is arguably _needlessly_ complicated. Our
+domain names are registered with OVH, but we actually use Google Cloud DNS
+to manage them.
+
+On the one hand, `raya` maintains a DNS zone for the VMs making it up in Google
+Cloud DNS (`google_dns_managed_zone.primary.dns_name`, defined in `dns.tf`). On
+the other hand, `raya` runs `external-dns` which creates DNS records for
+applications on demand for a few whitelisted (sub)domains (see
+`local.dns_zones`). These zones are owned by our deployment, but the ownership
+remains on OVH, so we also set up the `ovh` provider in order to record
+delegation automatically.
+
+Firstly, the `google` provider needs credentials with the following IAM rights:
+
+- `roles/dns.admin`, to manage the zones delegated to our cluster and their records.
+  It also allows to grant IAM on the zone itself, which we leverage to create a
+  specific system account for the running cluster.
+- `roles/iam.serviceAccountAdmin`, to create that service account,
+  `external-dns` (see [The `kube-system` namespace](kube-system.md).
+- `roles/iam.serviceAccountKeyAdmin`, to mint that service account’s key, which
+  is what travels in the Ignition config.
+
+The last two exist because the cluster does not reuse these credentials: it gets
+an identity of its own, holding `roles/dns.admin` on the zones listed in
+`local.dns_zones` and nothing else in the project.
+
+We also need an OVH service account with a policy allowing it to manage the DNS
+zone for the domains that will be (partially or completely) delegated to Google
+Cloud DNS.
+
+When provisioning `raya`’s VMs, the following records are created:
+
+- `A` record for `cp.$google_dns_managed_zone.primary.dns_name` pointing to the
+  control plane.

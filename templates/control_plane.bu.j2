@@ -124,6 +124,23 @@
   contents:
     inline: |
 {% filter trim|indent(6, true) %}{% include "manifests/traefik-config.yaml" %}{% endfilter %}
+
+- path: /etc/rancher/k3s/manifests/external-dns.yaml
+  mode: 0644
+  contents:
+    inline: |
+{% filter trim|indent(6, true) %}{% include "manifests/external-dns.yaml" %}{% endfilter %}
+- path: /etc/rancher/k3s/manifests/gcp-dns-secret.yaml
+  mode: 0600
+  contents:
+    inline: |
+{% filter trim|indent(6, true) %}{% include "manifests/gcp-dns-secret.yaml" %}{% endfilter %}
+
+- path: /etc/rancher/k3s/manifests/hello.yaml
+  mode: 0644
+  contents:
+    inline: |
+{% filter trim|indent(6, true) %}{% include "manifests/hello.yaml" %}{% endfilter %}
 {% endblock %}
 
 {% block systemd_units %}

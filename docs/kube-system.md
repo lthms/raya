@@ -95,3 +95,21 @@ all.
 Finally, the `websecure` entrypoint (`:443`) has TLS enabled at the chart level,
 so an `Ingress` only has to name the `Secret` holding its certificate; there is
 nothing to configure on the entrypoint itself.
+
+## external-dns, the name publisher
+
+`external-dns` automates the lifecycle of records necessary for an application
+deployed on `raya` to be reached via its declared domain. The DNS zones
+`external-dns` can manage are defined in `local.dns_zones`.
+
+By default, `external-dns` writes the address reported by the Ingress’ load
+balancer. In our case, since Traefik is a `DaemonSet`, `external-dns` creates
+one record per node making up `raya`. DNS sends a client to any node, and every
+node can terminate.
+
+Google Cloud DNS is one of the providers external-dns speaks natively. It
+authenticates as a service account holding `dns.admin` on the managed zones.
+Records are owned rather than merely written. `external-dns` keeps a TXT record
+next to each one, stamped with this cluster’s name, and runs with
+`--policy=sync`: a name that stops being claimed is deleted again, and one that
+was never ours is left alone.

@@ -52,17 +52,19 @@ graph TB
     mkfs["mkfs-k3s-volume.service<br/>creates a filesystem<br/>if the device has none"]
     mount["var-lib-rancher-k3s.mount<br/>/var/lib/rancher/k3s"]
     seed["k3s-seed-pki.service<br/>reconciles the data directory<br/>with the Ignition config"]
+    manifests["k3s-sync-manifests.service<br/>links the Ignition manifests<br/>into the auto-deploy directory"]
     setup(["k3s-setup.target"])
     k3s["k3s.service<br/>k3s server"]
 
     nm --> online --> init
-    mkfs --> mount --> seed
+    mkfs --> mount --> seed --> manifests
 
     tmpfiles --> setup
     online --> setup
     init --> setup
     mount --> setup
     seed --> setup
+    manifests --> setup
     setup --> k3s
   end
 
@@ -73,7 +75,7 @@ graph TB
   classDef control stroke:#bf7f3f,stroke-width:2px
 
   class attach_nic,tmpfiles,nm,online,init,setup shared
-  class attach_vol,mkfs,mount,seed,k3s control
+  class attach_vol,mkfs,mount,seed,manifests,k3s control
 ```
 
 While agents are stateless, the control plane VM carries the cluster datastore
@@ -87,3 +89,9 @@ The control plane detects a stalled volume by comparing its provisioned secrets
 (namely, its secret token and its CA) with the one currently saved on the
 mounted volume. If they disagree, the previous cluster datastore and PKI are
 dropped completely.
+
+The manifests carried by the Ignition config are symlinked into `k3s`’
+auto-deploy directory on the volume, so that `k3s` applies them as it starts.
+As they are links and not copies, a manifest removed from the config will leave
+an broken symlink. Such link is deleted on the next boot, and `k3s` tears down
+what it had deployed.

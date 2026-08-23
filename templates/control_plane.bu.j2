@@ -96,6 +96,34 @@
       install -o 0 -g 0 -m 0600 "${SRC}/server-ca.key" "${DST}/server-ca.key"
       install -o 0 -g 0 -m 0644 "${SRC}/client-ca.crt" "${DST}/client-ca.crt"
       install -o 0 -g 0 -m 0600 "${SRC}/client-ca.key" "${DST}/client-ca.key"
+
+- path: /usr/local/bin/k3s-sync-manifests.sh
+  mode: 0755
+  contents:
+    inline: |
+      #!/usr/bin/env bash
+      # Hand the manifests carried by the Ignition config to k3s's auto-deploy
+      # directory.
+      set -euo pipefail
+
+      SRC=/etc/rancher/k3s/manifests
+      DST=/var/lib/rancher/k3s/server/manifests
+
+      mkdir -p "${DST}"
+
+      find "${DST}" -maxdepth 1 -type l ! -exec test -e {} \; -print -delete
+
+      # No match leaves the pattern itself, which is not a file.
+      for f in "${SRC}"/*.yaml; do
+          [ -f "${f}" ] || continue
+          ln -sfn "${f}" "${DST}/$(basename "${f}")"
+      done
+
+- path: /etc/rancher/k3s/manifests/traefik-config.yaml
+  mode: 0644
+  contents:
+    inline: |
+{% filter trim|indent(6, true) %}{% include "manifests/traefik-config.yaml" %}{% endfilter %}
 {% endblock %}
 
 {% block systemd_units %}
@@ -144,6 +172,24 @@
     Type=oneshot
     RemainAfterExit=yes
     ExecStart=/usr/local/bin/k3s-seed-pki.sh
+
+    [Install]
+    RequiredBy=k3s-setup.target
+
+- name: k3s-sync-manifests.service
+  enabled: true
+  contents: |
+    [Unit]
+    Description=Sync the auto-deploy manifests into the k3s data directory
+    # Ordered after the seeding, which wipes server/ when it re-bootstraps.
+    Requires=k3s-seed-pki.service
+    After=k3s-seed-pki.service
+    Before=k3s-setup.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    ExecStart=/usr/local/bin/k3s-sync-manifests.sh
 
     [Install]
     RequiredBy=k3s-setup.target

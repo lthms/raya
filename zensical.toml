@@ -12,6 +12,7 @@ nav = [
   "index.md",
   { "Infrastructure" = ["network.md", "cluster-provisioning.md", "boot.md"] },
   { "Deployment" = ["ci-cd.md", "administrating.md"] },
+  { "Cluster" = ["kube-system.md"] },
   { "Observability" = ["status-page.md"] },
 ]
 

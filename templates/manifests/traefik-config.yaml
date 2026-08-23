@@ -1,0 +1,24 @@
+# k3s installs traefik from a bundled HelmChart; a HelmChartConfig of the same
+# name overlays that chart's values, so the bundled ingress can be reconfigured
+# without forking its manifest.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |
+    deployment:
+      kind: DaemonSet
+    service:
+      spec:
+        externalTrafficPolicy: Local
+    ports:
+      websecure:
+        tls:
+          enabled: true
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+

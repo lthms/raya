@@ -40,7 +40,7 @@ data "jinja_template" "control_plane" {
       client_ca_cert = tls_self_signed_cert.client_ca.cert_pem
       client_ca_key  = tls_private_key.client_ca.private_key_pem
 
-      managed_dns_zones   = [for zone in local.dns_zones : trimsuffix(zone.dns_name, ".")]
+      managed_dns_zones   = local.dns_zones
       gcp_project         = jsondecode(var.gcp_terraform_credentials).project_id
       gcp_dns_credentials = google_service_account_key.external_dns.private_key
 

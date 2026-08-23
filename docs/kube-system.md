@@ -108,8 +108,8 @@ one record per node making up `raya`. DNS sends a client to any node, and every
 node can terminate.
 
 Google Cloud DNS is one of the providers external-dns speaks natively. It
-authenticates as a service account holding `dns.admin` on the managed zones.
-Records are owned rather than merely written. `external-dns` keeps a TXT record
-next to each one, stamped with this cluster’s name, and runs with
-`--policy=sync`: a name that stops being claimed is deleted again, and one that
-was never ours is left alone.
+authenticates as a service account holding `dns.admin` on a project that holds
+nothing but our zones. Records are owned rather than merely written.
+`external-dns` keeps a TXT record next to each one, stamped with this cluster’s
+name, and runs with `--policy=sync`: a name that stops being claimed is deleted
+again, and one that was never ours is left alone.

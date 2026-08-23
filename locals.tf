@@ -32,7 +32,7 @@ locals {
   control_plane_private_ip = cidrhost(local.nodes_ip_range, 10)
 
   # The zones the cluster may write records into.
-  dns_zones = [google_dns_managed_zone.primary]
+  dns_zones = [trimsuffix(google_dns_managed_zone.primary.dns_name, ".")]
 
   authorized_users = ["lthms"]
   authorized_keys = sort(flatten([

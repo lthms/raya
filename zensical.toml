@@ -11,8 +11,8 @@ copyright = """
 nav = [
   "index.md",
   { "Infrastructure" = ["network.md", "cluster-provisioning.md", "boot.md"] },
-  { "Monitoring" = ["status-page.md"] },
-  "ci-cd.md",
+  { "Deployment" = ["ci-cd.md", "administrating.md"] },
+  { "Observability" = ["status-page.md"] },
 ]
 
 [project.theme]

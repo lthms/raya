@@ -1,2 +1,6 @@
 /site/
 /.terraform/
+
+# The kubeconfig fetched off the control plane (see docs/administrating.md).
+# Holds cluster-admin credentials, and this repository is public.
+/raya.yaml

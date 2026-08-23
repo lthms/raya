@@ -30,17 +30,10 @@ resource "google_service_account_key" "external_dns" {
   service_account_id = google_service_account.external_dns.name
 }
 
-resource "google_dns_managed_zone_iam_member" "external_dns" {
-  for_each = toset([for zone in local.dns_zones : zone.name])
-
-  managed_zone = each.key
-  role         = "roles/dns.admin"
-  member       = "serviceAccount:${google_service_account.external_dns.email}"
-}
-
-output "dns_nameservers" {
-  description = "Nameservers the zone has to be delegated to"
-  value       = google_dns_managed_zone.primary.name_servers
+resource "google_project_iam_member" "external_dns" {
+  project = google_service_account.external_dns.project
+  role    = "roles/dns.admin"
+  member  = "serviceAccount:${google_service_account.external_dns.email}"
 }
 
 resource "ovh_domain_zone_record" "delegation" {

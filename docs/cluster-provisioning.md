@@ -185,17 +185,17 @@ delegation automatically.
 
 Firstly, the `google` provider needs credentials with the following IAM rights:
 
-- `roles/dns.admin`, to manage the zones delegated to our cluster and their records.
-  It also allows to grant IAM on the zone itself, which we leverage to create a
-  specific system account for the running cluster.
-- `roles/iam.serviceAccountAdmin`, to create that service account,
-  `external-dns` (see [The `kube-system` namespace](kube-system.md).
+- `roles/dns.admin`, to manage the zones delegated to our cluster and their
+  records.
+- `roles/iam.serviceAccountAdmin`, to create the service account `external-dns`
+  authenticates as (see [The `kube-system` namespace](kube-system.md)).
 - `roles/iam.serviceAccountKeyAdmin`, to mint that service account’s key, which
   is what travels in the Ignition config.
+- `roles/resourcemanager.projectIamAdmin`, to grant that same service account
+  `roles/dns.admin` on the project.
 
-The last two exist because the cluster does not reuse these credentials: it gets
-an identity of its own, holding `roles/dns.admin` on the zones listed in
-`local.dns_zones` and nothing else in the project.
+The last three exist because the cluster does not reuse these credentials: it
+gets an identity of its own, holding `roles/dns.admin` on this project.
 
 We also need an OVH service account with a policy allowing it to manage the DNS
 zone for the domains that will be (partially or completely) delegated to Google

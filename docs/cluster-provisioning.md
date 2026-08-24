@@ -192,7 +192,8 @@ Firstly, the `google` provider needs credentials with the following IAM rights:
 - `roles/iam.serviceAccountKeyAdmin`, to mint that service account’s key, which
   is what travels in the Ignition config.
 - `roles/resourcemanager.projectIamAdmin`, to grant that same service account
-  `roles/dns.admin` on the project.
+  `roles/dns.admin` on the project. This requires to enable the Cloud Resource
+  Manager API.
 
 The last three exist because the cluster does not reuse these credentials: it
 gets an identity of its own, holding `roles/dns.admin` on this project.

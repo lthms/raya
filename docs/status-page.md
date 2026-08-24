@@ -33,3 +33,14 @@ monitor to down. The status page can therefore lag reality by up to 6 minutes.
     address. The history is kept in the process.
 
     As a consequence, a rebuild taking more than 3 minutes can trigger an outage.
+
+## End-to-end connectivity with the cluster
+
+`raya` exposes a basic HTTP server at `h.ry.xmu.mx`, and we create a monitor
+monitoring that endpoint over HTTPS.
+
+A green check from that monitor actually covers quite a lot: the DNS delegation
+resolves (`ry.xmu.mx` is managed by Google Cloud DNS), `external-dns` published
+the record on our application installation, a node accepted the connection,
+`cert-manager`’s certificate is valid for the name, Traefik routed it, and the
+pod answered.

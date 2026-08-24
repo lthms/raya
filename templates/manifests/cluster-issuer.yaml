@@ -1,0 +1,21 @@
+# The single issuer every application on `raya` asks for a certificate from.
+# `ClusterIssuer` rather than `Issuer`, so a namespace does not need one of its
+# own — and does not get to name a different ACME account.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    email: {{ acme_email }}
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+      - dns01:
+          cloudDNS:
+            project: {{ gcp_project }}
+            serviceAccountSecretRef:
+              name: gcp-acme-dns
+              key: credentials.json
+

@@ -1,6 +1,17 @@
 locals {
   dns_parent_zone = "xmu.mx"
   dns_subdomain   = "ry"
+
+  # Where Let's Encrypt sends expiry warnings, and the address raya's ACME
+  # account is registered under. Not a secret, so it lives with the other naming
+  # decisions rather than in a tfvars file.
+  acme_email = "lthms@soap.coffee"
+
+  # The name the `hello` application claims. Built from the pieces above rather
+  # than read off the zone, so it is known at plan time: status_page.tf needs it
+  # to declare a monitor, and templates/manifests/hello.yaml to declare the
+  # Ingress. Spelling it once keeps the two from drifting.
+  hello_hostname = "h.${local.dns_subdomain}.${local.dns_parent_zone}"
 }
 
 resource "google_dns_managed_zone" "primary" {
@@ -34,6 +45,26 @@ resource "google_project_iam_member" "external_dns" {
   project = google_service_account.external_dns.project
   role    = "roles/dns.admin"
   member  = "serviceAccount:${google_service_account.external_dns.email}"
+}
+
+# cert-manager answers ACME DNS-01 challenges by writing a TXT record under the
+# name it is proving control of, which is a strict subset of what external-dns
+# does — but Cloud DNS has no role narrow enough to express that, so both end up
+# with `dns.admin`. A second identity is still worth the two resources: it can be
+# rotated on its own, and the audit log attributes each write.
+resource "google_service_account" "cert_manager" {
+  account_id   = "cert-manager"
+  display_name = "cert-manager, answering ACME challenges for raya's certificates"
+}
+
+resource "google_service_account_key" "cert_manager" {
+  service_account_id = google_service_account.cert_manager.name
+}
+
+resource "google_project_iam_member" "cert_manager" {
+  project = google_service_account.cert_manager.project
+  role    = "roles/dns.admin"
+  member  = "serviceAccount:${google_service_account.cert_manager.email}"
 }
 
 resource "ovh_domain_zone_record" "delegation" {

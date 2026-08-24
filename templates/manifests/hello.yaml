@@ -48,10 +48,16 @@ kind: Ingress
 metadata:
   name: hello
   namespace: hello
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - {{ hello_hostname }}
+      secretName: hello-tls
   rules:
-    - host: h.{{ primary_dns_zone }}
+    - host: {{ hello_hostname }}
       http:
         paths:
           - path: /

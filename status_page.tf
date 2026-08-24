@@ -3,6 +3,10 @@ resource "betteruptime_status_page" "main" {
   company_url  = "https://soap.coffee/~lthms"
   subdomain    = "raya"
   timezone     = "Paris"
+
+  design = "v2"
+  theme  = "light"
+  layout = "vertical"
 }
 
 resource "betteruptime_monitor" "control_plane" {
@@ -19,7 +23,7 @@ resource "betteruptime_monitor" "control_plane" {
 resource "betteruptime_status_page_section" "reachability" {
   status_page_id = betteruptime_status_page.main.id
   name           = "VMs are reachable"
-  position       = 0
+  position       = 1
 }
 
 resource "betteruptime_status_page_resource" "control_plane" {
@@ -48,7 +52,7 @@ resource "betteruptime_monitor" "hello" {
 resource "betteruptime_status_page_section" "serving" {
   status_page_id = betteruptime_status_page.main.id
   name           = "The cluster serves traffic"
-  position       = 1
+  position       = 0
 }
 
 resource "betteruptime_status_page_resource" "hello" {

@@ -184,3 +184,51 @@ The controller authenticates with a token of its own, held in the `hcloud`
 `Secret`. It is distinct from the one Terraform runs on, even if the two tokens
 actually share the same rights (Hetzner does not provide a fine-grained
 capabilities system for its API token).
+
+## Flux, the delivery solution
+
+The control plane API endpoint is only reachable from within the cluster, via
+its private interface. This means our only opportunity to _push_ something to
+the cluster is at provision time via the Ignition config of the control plane.
+
+To deploy workloads, we use [Flux] to _pull_ specs instead from git
+repositories. Flux is configured in two steps. A “bootstrap” is embedded in the
+Ignition config. This bootstraps declares a `GitRepository` resource for
+`raya`’s own upstream, and a `Kustomization` telling Flux to watch the
+`deploy/` directory.
+
+As a consequence, any (transitive) changes to `deploy/kustomization.yaml` will
+trigger Flux to sync the cluster accordingly.
+
+Only the two controllers a git-to-cluster reconciliation needs are installed,
+`source-controller` and `kustomize-controller`. Helm releases keep coming from
+`k3s`’ own controller, as every chart above does.
+
+!!! note
+
+    The chart ships four more controllers, which `raya` turns off.
+
+    - `helm-controller` reconciles `HelmRelease` resources. It is what deploying
+      applications packaged as Helm charts would need.
+    - `image-reflector-controller` and `image-automation-controller` watch a
+      registry for new tags and commit the update back to git. That would
+      streamline remaining up-to-date.
+    - `notification-controller` sends events outwards and receives webhooks,
+      which lets a push trigger a sync rather than waiting for the interval to
+      come round.
+
+[Flux]: https://fluxcd.io/
+
+## The fleet, declared once
+
+Flux carries `deploy/fleet/agents.json` into the cluster as a `ConfigMap` via a
+`configMapGenerator`.
+
+Every ten minutes, `deploy/fleet/node-reaper.yaml` compares the fleet the file
+declares against the `agent-N` nodes that exist, and deletes the `NotFound`
+node that should not exist anymore. This is a lot more convenient than trying
+to garbage collect discarded nodes when we downscale the cluster.
+
+!!! note
+    Its filters node names to onyl keep `agent-<n>` objects, meaning the
+    control plane is not addressable by it.

@@ -1,0 +1,61 @@
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: flux
+  namespace: kube-system
+spec:
+  repo: https://fluxcd-community.github.io/helm-charts
+  chart: flux2
+  version: 2.19.0
+  targetNamespace: flux-system
+  createNamespace: true
+  valuesContent: |
+    # Only the two controllers a git-to-cluster reconciliation needs. The
+    # notification controller has nothing to notify, image automation has no
+    # registry to watch, and each one we do not install is one fewer thing
+    # running on a two-core control plane.
+    helmController:
+      create: false
+    notificationController:
+      create: false
+    imageAutomationController:
+      create: false
+    imageReflectionController:
+      create: false
+    sourceController:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+    kustomizeController:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+---
+# Bootstrap Flux’s configuration from raya’s repository instead of Ignition.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: raya
+  namespace: flux-system
+spec:
+  url: https://github.com/lthms/raya
+  interval: 5m
+  ref:
+    branch: main
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-config
+  namespace: flux-system
+spec:
+  interval: 5m
+  path: ./deploy
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: raya
+

@@ -35,6 +35,32 @@ resource "betteruptime_status_page_resource" "control_plane" {
   widget_type            = "history"
 }
 
+# The same ping check for every agent, under the same section. An agent going
+# down does not take the cluster with it, which is the point — the section
+# reports which machines are up, and the section above reports whether the
+# cluster is still serving.
+resource "betteruptime_monitor" "agents" {
+  count = length(local.agents_server_types)
+
+  url                 = hcloud_server.agents[count.index].ipv4_address
+  monitor_type        = "ping"
+  check_frequency     = 180
+  confirmation_period = 180
+
+  regions = ["us", "eu", "as", "au"]
+}
+
+resource "betteruptime_status_page_resource" "agents" {
+  count = length(local.agents_server_types)
+
+  status_page_id         = betteruptime_status_page.main.id
+  status_page_section_id = betteruptime_status_page_section.reachability.id
+  resource_id            = betteruptime_monitor.agents[count.index].id
+  resource_type          = "Monitor"
+  public_name            = "agent-${count.index}"
+  widget_type            = "history"
+}
+
 resource "betteruptime_monitor" "hello" {
   url          = "https://${local.hello_hostname}"
   monitor_type = "keyword"

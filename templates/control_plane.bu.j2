@@ -161,6 +161,12 @@
     inline: |
 {% filter trim|indent(6, true) %}{% include "manifests/hcloud-csi-secret.yaml" %}{% endfilter %}
 
+- path: /etc/rancher/k3s/manifests/flux.yaml
+  mode: 0644
+  contents:
+    inline: |
+{% filter trim|indent(6, true) %}{% include "manifests/flux.yaml" %}{% endfilter %}
+
 - path: /etc/rancher/k3s/manifests/hello.yaml
   mode: 0644
   contents:

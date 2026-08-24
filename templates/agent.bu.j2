@@ -1,0 +1,61 @@
+{% extends "base.bu.j2" %}
+
+{% block storage_files %}
+- path: /etc/rancher/k3s/config.yaml
+  mode: 0600
+  contents:
+    inline: |
+      server: https://{{ control_plane_private_ip }}:6443
+      token: "{{ k3s_token }}"
+      node-name: {{ node_name }}
+      node-ip: {{ private_ip }}
+      flannel-iface: enp7s0
+
+# k3s remembers a per-node password, hashed into an immutable Secret named after
+# the node, and refuses a node presenting a different one. That Secret is
+# garbage-collected with its Node — k3s owns it by reference — but nothing here
+# deletes the Node of a machine that is gone, so replacing this VM would meet a
+# hash a fresh random password could never match. Deriving the password from the
+# cluster token and the node name instead means the replacement presents exactly
+# what the Secret already holds, and an agent can be rebuilt at will.
+- path: /etc/rancher/node/password
+  mode: 0600
+  contents:
+    inline: |
+      {{ node_password }}
+
+{% endblock %}
+
+{% block systemd_units %}
+- name: k3s-agent.service
+  enabled: true
+  contents: |
+    [Unit]
+    Description=Lightweight Kubernetes (agent)
+    Documentation=https://k3s.io
+    Requires=k3s-setup.target
+    After=k3s-setup.target
+
+    [Service]
+    Type=notify
+    ExecStartPre=-/sbin/modprobe br_netfilter
+    ExecStartPre=-/sbin/modprobe overlay
+    ExecStart=/usr/local/bin/k3s agent
+    KillMode=process
+    Delegate=yes
+    # Nothing orders this after the control plane, and nothing can: the agent
+    # boots on a machine that knows only an address. It retries until the API
+    # answers, which is also what makes it survive the control plane being
+    # replaced under it.
+    Restart=always
+    RestartSec=5s
+    TimeoutStartSec=0
+    LimitNOFILE=1048576
+    LimitNPROC=infinity
+    LimitCORE=infinity
+    TasksMax=infinity
+
+    [Install]
+    WantedBy=multi-user.target
+{% endblock %}
+

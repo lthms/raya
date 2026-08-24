@@ -113,3 +113,51 @@ nothing but our zones. Records are owned rather than merely written.
 `external-dns` keeps a TXT record next to each one, stamped with this cluster’s
 name, and runs with `--policy=sync`: a name that stops being claimed is deleted
 again, and one that was never ours is left alone.
+
+## cert-manager, the certificate issuer
+
+Traefik's `websecure` entrypoint serves whatever certificate the `Ingress` of
+an application names. `cert-manager` is the component reaching out to the
+certificates issuer (in our case, `letsencrypt`) when new ones are required
+(new application, renewal, etc.). 
+
+The shape of an `Ingress` asking for a certificate becomes quite
+straightforward:
+
+```yaml
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  tls:
+    - hosts: [h.ry.xmu.mx]
+      secretName: hello-tls
+```
+
+`cert-manager` watches for that pair, issues the certificate, and writes it into
+the named `Secret`. Traefik then picks it up. The `hello` application deployed
+on the cluster does exactly this, and is what tells us the whole chain works.
+
+The issuer is configures to solve ACME challenges over `DNS-01` rather than the
+default `HTTP-01`. `DNS-01` is the only challenge that can carry a wildcard
+which one of our application needs. Google Cloud DNS is a solver `cert-manager`
+implements natively. It authenticates as its own service account with
+`dns.admin` granted.
+
+### Checking propagation against public resolvers
+
+`cert-manager` will not tell Let's Encrypt a challenge is ready until it has seen
+the record itself, and by default it asks the zone's authoritative nameservers.
+With some cloud providers, this can be be an issue as such requests can be
+routed to a local instance whose view of the zone lags behind the public one.
+In that case, the check fails with `NXDOMAIN` on a record that resolves fine
+from outside.
+
+`raya` therefore runs `cert-manager` with `--dns01-recursive-nameservers-only`
+and `--dns01-recursive-nameservers` pointed at `1.1.1.1` and `8.8.8.8`[^vultr].
+The propagation check is answered by the same kind of resolver Let's Encrypt
+will use.
+
+[^vultr]: This was the case for Vultr. It's not clear if Hetzner would suffer
+    the same issue, but relying on public DNS worked in the past so there is
+    little reasons to change this.

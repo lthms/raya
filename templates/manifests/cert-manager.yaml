@@ -1,0 +1,33 @@
+# cert-manager issues the certificates the `websecure` entrypoint serves.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: cert-manager
+  namespace: kube-system
+spec:
+  repo: https://charts.jetstack.io
+  chart: cert-manager
+  version: v1.19.3
+  targetNamespace: kube-system
+  valuesContent: |
+    crds:
+      enabled: true
+      keep: true
+    extraArgs:
+      - --dns01-recursive-nameservers-only
+      - --dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+    cainjector:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+    webhook:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+

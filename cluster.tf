@@ -40,9 +40,19 @@ data "jinja_template" "control_plane" {
       client_ca_cert = tls_self_signed_cert.client_ca.cert_pem
       client_ca_key  = tls_private_key.client_ca.private_key_pem
 
-      managed_dns_zones   = local.dns_zones
-      gcp_project         = jsondecode(var.gcp_terraform_credentials).project_id
-      gcp_dns_credentials = google_service_account_key.external_dns.private_key
+      managed_dns_zones = local.dns_zones
+      gcp_project       = jsondecode(var.gcp_terraform_credentials).project_id
+
+      # Two keys, two service accounts: one for the component that publishes
+      # names, one for the component that proves we own them. See dns.tf.
+      gcp_dns_credentials      = google_service_account_key.external_dns.private_key
+      gcp_acme_dns_credentials = google_service_account_key.cert_manager.private_key
+
+      acme_email = local.acme_email
+
+      # The name the hello application serves; status_page.tf monitors the same
+      # one. See dns.tf.
+      hello_hostname = local.hello_hostname
 
       # The zone the cluster's own names are built under. See dns.tf.
       primary_dns_zone = trimsuffix(google_dns_managed_zone.primary.dns_name, ".")

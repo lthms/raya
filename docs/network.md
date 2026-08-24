@@ -10,7 +10,7 @@ communication stays off the public Internet.
 
 ## Addressing
 
-Addresses inside `nodes` are assigned by hand in `locals.tf`, so they follow a
+Addresses inside `nodes` are assigned by hand in `network.tf`, so they follow a
 convention rather than a mechanism. `10.0.1.1` to `10.0.1.9` are reserved for
 Hetzner and use cases that may arise at a later date. The control plane takes
 `10.0.1.10`, and agents start at `10.0.1.20`.

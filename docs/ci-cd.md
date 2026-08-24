@@ -56,6 +56,25 @@ Terraform state is hosted on [HCP Terraform](https://app.terraform.io), under
 the `raya` workspace belonging to the `lthms` organization. Its execution mode
 is set to `Local`.
 
+## Variable Management
+
+Terraform inputs are split in two, depending on whether or not their values can
+be committed to the repository.
+
+Non-sensitive inputs (sizing, locations, the subdomain the cluster manages, the
+list of authorized GitHub handles) are declared in `variables.tf`, and their
+production values live in `prod.tfvars`. Both provisioning workflows pass that
+file explicitly, so `terraform plan` and `terraform apply` see the same
+configuration.
+
+```bash
+terraform plan -var-file prod.tfvars
+terraform apply -auto-approve -var-file prod.tfvars
+```
+
+Sensitive inputs are declared in `secrets.tf`. They never appear in
+`prod.tfvars`, but instead come from repository secrets.
+
 ## Secret Management
 
 To let the GitHub runners connect to the various services involved in `raya`’s
@@ -79,7 +98,7 @@ These secrets are exposed to both provisioning workflows
 environment variable (since we are using app.terraform.io)[^doc].
 
 The other ones hold values intended for sensitive Terraform variables declared
-in `variables.tf`. Such values are fed to Terraform using the `TF_VAR_` prefix
+in `secrets.tf`. Such values are fed to Terraform using the `TF_VAR_` prefix
 convention. For instance, `HCLOUD_TOKEN` initializes the `hcloud_token` variable
 by setting `TF_VAR_hcloud_token`[^local].
 

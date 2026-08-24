@@ -1,34 +1,24 @@
-variable "hcloud_token" {
+variable "control_plane_server_type" {
   type        = string
-  description = "Hetzner Cloud API token"
-  sensitive   = true
+  description = "The server_type for the VM running the k3s control plane"
 }
 
-variable "betterstack_token" {
+variable "control_plane_location" {
   type        = string
-  description = "BetterStack API token"
-  sensitive   = true
+  description = "The location for the VM running the k3s control plane"
 }
 
-# A Google service account key, as JSON. Terraform uses it to manage the zone;
-# the key the cluster itself holds is a different one, minted by dns.tf and
-# scoped to that zone alone.
-variable "gcp_terraform_credentials" {
-  type        = string
-  description = "Google service account key Terraform manages Cloud DNS with"
-  sensitive   = true
+variable "control_plane_volume_size" {
+  type        = number
+  description = "The size of the volume attached to the control plane VM to hold its datastore and PKI"
 }
 
-# An OVHcloud OAuth2 service account, needed for one thing only: the NS records
-# in xmu.mx that delegate ry.xmu.mx to Google.
-variable "ovh_client_id" {
-  type        = string
-  description = "OVHcloud OAuth2 client ID"
-  sensitive   = true
+variable "authorized_users" {
+  type        = list(string)
+  description = "List of GitHub handles authorized to connect to the VMs over SSH, using their account’s private key"
 }
 
-variable "ovh_client_secret" {
+variable "cluster_managed_subdomain" {
   type        = string
-  description = "OVHcloud OAuth2 client secret"
-  sensitive   = true
+  description = "The subdomain of xmu.mx owned and managed by the cluster for its own needs"
 }

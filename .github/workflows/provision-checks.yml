@@ -33,6 +33,6 @@ jobs:
         with:
           terraform_version: 1.15.8
       - run: terraform fmt -check -recursive
-      - run: terraform init
-      - run: terraform validate
-      - run: terraform plan -no-color
+      - run: terraform init -var-file prod.tfvars
+      - run: terraform validate -var-file prod.tfvars
+      - run: terraform plan -var-file prod.tfvars

@@ -1,3 +1,15 @@
+locals {
+  fcos_pin     = jsondecode(file("${path.module}/image/fcos.pin"))
+  fcos_version = local.fcos_pin.version
+
+  k3s_pin     = jsondecode(file("${path.module}/image/k3s.pin"))
+  k3s_version = local.k3s_pin.version
+
+  # Hetzner label values reject the `+` in the release tag. image/fcos.pkr.hcl
+  # and image/build.sh apply the same rewrite when they stamp the snapshot.
+  k3s_version_label = replace(local.k3s_version, "+", "-")
+}
+
 data "hcloud_image" "fcos" {
   with_selector     = "managed_by=raya,os=fcos,fcos_version=${local.fcos_version},k3s_version=${local.k3s_version_label}"
   with_architecture = "x86"
@@ -7,6 +19,10 @@ data "hcloud_image" "fcos" {
 resource "random_password" "k3s_token" {
   length  = 48
   special = false
+}
+
+locals {
+  control_plane_volume_device = "/dev/disk/by-id/scsi-0HC_Volume_${hcloud_volume.control_plane_k3s.id}"
 }
 
 data "jinja_template" "control_plane" {
@@ -69,8 +85,8 @@ data "ct_config" "control_plane" {
 
 resource "hcloud_server" "control_plane" {
   name        = "control-plane"
-  server_type = local.control_plane_server_type
-  location    = local.control_plane_location
+  server_type = var.control_plane_server_type
+  location    = var.control_plane_location
   image       = data.hcloud_image.fcos.id
   user_data   = sensitive(data.ct_config.control_plane.rendered)
 }
@@ -84,8 +100,8 @@ resource "hcloud_server_network" "control_plane" {
 # The cluster's datastore and PKI living under /var/lib/rancher/k3s
 resource "hcloud_volume" "control_plane_k3s" {
   name     = "control-plane-k3s"
-  size     = local.control_plane_volume_size
-  location = local.control_plane_location
+  size     = var.control_plane_volume_size
+  location = var.control_plane_location
 }
 
 resource "hcloud_volume_attachment" "control_plane_k3s" {

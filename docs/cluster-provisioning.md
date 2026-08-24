@@ -77,12 +77,12 @@ given GitHub user `$user`, `https://github.com/$user.keys` returns the list of
 public keys this user can use (one per line).
 
 As a consequence, giving access to the VMs to someone becomes as simple as
-adding their GitHub handle to `local.authorized_users` (declared in
-`locals.tf`).
+adding their GitHub handle to `var.authorized_users` (declared in
+`variables.tf`, set in `prod.tfvars`).
 
 !!! warning
 
-    Adding a new handle to `local.authorized_users` will change the Ignition
+    Adding a new handle to `var.authorized_users` will change the Ignition
     config of the VMs making up `raya`, forcing a complete redeployment. The
     current declaration of `local.authorized_keys` ensures a stable order among
     `terraform plan` calls for this reason.

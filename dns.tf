@@ -1,6 +1,8 @@
 locals {
+  # The zones the cluster may write records into.
+  dns_zones = [trimsuffix(google_dns_managed_zone.primary.dns_name, ".")]
+
   dns_parent_zone = "xmu.mx"
-  dns_subdomain   = "ry"
 
   # Where Let's Encrypt sends expiry warnings, and the address raya's ACME
   # account is registered under. Not a secret, so it lives with the other naming
@@ -11,12 +13,12 @@ locals {
   # than read off the zone, so it is known at plan time: status_page.tf needs it
   # to declare a monitor, and templates/manifests/hello.yaml to declare the
   # Ingress. Spelling it once keeps the two from drifting.
-  hello_hostname = "h.${local.dns_subdomain}.${local.dns_parent_zone}"
+  hello_hostname = "h.${var.cluster_managed_subdomain}.${local.dns_parent_zone}"
 }
 
 resource "google_dns_managed_zone" "primary" {
   name        = "raya"
-  dns_name    = "${local.dns_subdomain}.${local.dns_parent_zone}."
+  dns_name    = "${var.cluster_managed_subdomain}.${local.dns_parent_zone}."
   description = "Names raya publishes for itself"
   visibility  = "public"
 }
@@ -75,7 +77,7 @@ resource "ovh_domain_zone_record" "delegation" {
   count = 4
 
   zone      = local.dns_parent_zone
-  subdomain = local.dns_subdomain
+  subdomain = var.cluster_managed_subdomain
   fieldtype = "NS"
   ttl       = 3600
   target    = google_dns_managed_zone.primary.name_servers[count.index]

@@ -37,4 +37,4 @@ jobs:
         with:
           terraform_version: 1.15.8
       - run: terraform init
-      - run: terraform apply -auto-approve -no-color
+      - run: terraform apply -auto-approve -var-file prod.tfvars

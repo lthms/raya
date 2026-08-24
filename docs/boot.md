@@ -95,3 +95,12 @@ auto-deploy directory on the volume, so that `k3s` applies them as it starts.
 As they are links and not copies, a manifest removed from the config will leave
 an broken symlink. Such link is deleted on the next boot, and `k3s` tears down
 what it had deployed.
+
+`k3s` deploys a few components of its own the same way. `raya` turns one of
+them off: `local-storage` is toggled to `disable`[^rationale] via the control plane
+configuration. As a consequence, the [Hetzner CSI driver](kube-system.md) is
+the only storage provider on the cluster.
+
+[^rationale]: A disabled component is uninstalled by `k3s`. The configuration
+    applies to a pre-existing cluster, on the boot that follows the change. In
+    our case, changing the configuration means replacing the VM anyway.

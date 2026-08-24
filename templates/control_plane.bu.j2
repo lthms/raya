@@ -10,6 +10,7 @@
       node-ip: {{ private_ip }}
       advertise-address: {{ private_ip }}
       flannel-iface: enp7s0
+      disable: local-storage
 
 - path: /etc/rancher/k3s/tls/server-ca.crt
   mode: 0644
@@ -148,6 +149,17 @@
   contents:
     inline: |
 {% filter trim|indent(6, true) %}{% include "manifests/cluster-issuer.yaml" %}{% endfilter %}
+
+- path: /etc/rancher/k3s/manifests/hcloud-csi.yaml
+  mode: 0644
+  contents:
+    inline: |
+{% filter trim|indent(6, true) %}{% include "manifests/hcloud-csi.yaml" %}{% endfilter %}
+- path: /etc/rancher/k3s/manifests/hcloud-csi-secret.yaml
+  mode: 0600
+  contents:
+    inline: |
+{% filter trim|indent(6, true) %}{% include "manifests/hcloud-csi-secret.yaml" %}{% endfilter %}
 
 - path: /etc/rancher/k3s/manifests/hello.yaml
   mode: 0644

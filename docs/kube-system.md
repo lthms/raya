@@ -161,3 +161,26 @@ will use.
 [^vultr]: This was the case for Vultr. It's not clear if Hetzner would suffer
     the same issue, but relying on public DNS worked in the past so there is
     little reasons to change this.
+
+## The Hetzner CSI driver, the storage provider
+
+An application that needs to keep a persistent state accross pod reschedules
+asks for it with a `PersistentVolumeClaim`. The Hetzner CSI driver is
+configured to provision a Hetzner volume and attaching it to the node the pod
+runs on, so the state outlives both the pod and the machine.
+
+!!! warning
+    A pod holding a volume can move between nodes in one location, never
+    between locations. As a consequence, we plan to only get agents in the same
+    region as the control plane (`hel1` at the time of writing).
+
+A pod dying, or its node being replaced, detaches and re-attaches the volume.
+Only deleting the `PersistentVolumeClaim` (*e.g.*, by destroying the pod)
+destroys the Hetzner volume. The deletion is driven from the cluster, losing
+the datastore does not delete the volumes: it orphans them instead. They remain
+provisioned, albeit unattached, and they are still billed.
+
+The controller authenticates with a token of its own, held in the `hcloud`
+`Secret`. It is distinct from the one Terraform runs on, even if the two tokens
+actually share the same rights (Hetzner does not provide a fine-grained
+capabilities system for its API token).

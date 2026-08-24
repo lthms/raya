@@ -1,0 +1,50 @@
+# The Hetzner CSI driver answers a PersistentVolumeClaim with a Hetzner volume,
+# and attaches it to whichever node the pod runs on.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: hcloud-csi
+  namespace: kube-system
+spec:
+  repo: https://charts.hetzner.cloud
+  chart: hcloud-csi
+  version: 2.22.1
+  targetNamespace: kube-system
+  valuesContent: |
+    controller:
+      resources:
+        hcloudCSIDriver:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        csiAttacher:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+        csiProvisioner:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+        csiResizer:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+        livenessProbe:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+    node:
+      resources:
+        hcloudCSIDriver:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        csiNodeDriverRegistrar:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+        livenessProbe:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+

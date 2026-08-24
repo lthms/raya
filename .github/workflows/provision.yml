@@ -26,6 +26,7 @@ jobs:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
       TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
+      TF_VAR_hcloud_cluster_token: ${{ secrets.HCLOUD_CLUSTER_TOKEN }}
       TF_VAR_betterstack_token: ${{ secrets.BETTERSTACK_TOKEN }}
       TF_VAR_gcp_terraform_credentials: ${{ secrets.GCP_TERRAFORM_CREDENTIALS }}
       TF_VAR_ovh_client_id: ${{ secrets.OVH_CLIENT_ID }}

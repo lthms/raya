@@ -66,6 +66,8 @@ data "jinja_template" "control_plane" {
 
       acme_email = local.acme_email
 
+      hcloud_cluster_token = var.hcloud_cluster_token
+
       # The name the hello application serves; status_page.tf monitors the same
       # one. See dns.tf.
       hello_hostname = local.hello_hostname

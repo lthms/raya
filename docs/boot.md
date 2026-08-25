@@ -104,3 +104,37 @@ the only storage provider on the cluster.
 [^rationale]: A disabled component is uninstalled by `k3s`. The configuration
     applies to a pre-existing cluster, on the boot that follows the change. In
     our case, changing the configuration means replacing the VM anyway.
+
+## Agents
+
+An agent’s boot sequence is the shared prefix, and then the one unit that starts
+`k3s`.
+
+```mermaid
+graph TB
+  subgraph terraform["Terraform · after the server is created"]
+    attach_nic["Attach the private network interface"]
+  end
+
+  subgraph systemd["systemd · every boot"]
+    tmpfiles["systemd-tmpfiles-setup<br/>restores the SELinux context<br/>of /var/usrlocal/bin"]
+    nm["NetworkManager<br/>enp7s0 static · public interface by DHCP"]
+    online(["network-online.target"])
+    init["k3s-init.service<br/>writes config.yaml.d/50-public-ip.yaml"]
+    setup(["k3s-setup.target"])
+    agent["k3s-agent.service<br/>k3s agent"]
+
+    nm --> online --> init
+
+    tmpfiles --> setup
+    online --> setup
+    init --> setup
+    setup --> agent
+  end
+
+  attach_nic -.->|enp7s0 appears| nm
+
+  classDef shared stroke:#3f7fbf,stroke-width:2px
+
+  class attach_nic,tmpfiles,nm,online,init,setup,agent shared
+```

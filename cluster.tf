@@ -8,6 +8,8 @@ locals {
   # Hetzner label values reject the `+` in the release tag. image/fcos.pkr.hcl
   # and image/build.sh apply the same rewrite when they stamp the snapshot.
   k3s_version_label = replace(local.k3s_version, "+", "-")
+
+  agents_server_types = jsondecode(file("${path.module}/deploy/fleet/agents.json")).agents
 }
 
 data "hcloud_image" "fcos" {
@@ -88,7 +90,7 @@ data "ct_config" "control_plane" {
 resource "hcloud_server" "control_plane" {
   name        = "control-plane"
   server_type = var.control_plane_server_type
-  location    = var.control_plane_location
+  location    = var.cluster_location
   image       = data.hcloud_image.fcos.id
   user_data   = sensitive(data.ct_config.control_plane.rendered)
 }
@@ -103,7 +105,7 @@ resource "hcloud_server_network" "control_plane" {
 resource "hcloud_volume" "control_plane_k3s" {
   name     = "control-plane-k3s"
   size     = var.control_plane_volume_size
-  location = var.control_plane_location
+  location = var.cluster_location
 }
 
 resource "hcloud_volume_attachment" "control_plane_k3s" {
@@ -112,4 +114,58 @@ resource "hcloud_volume_attachment" "control_plane_k3s" {
 
   # The mount unit in the Butane config owns this, not the guest agent.
   automount = false
+}
+
+data "jinja_template" "agents" {
+  count = length(local.agents_server_types)
+
+  source {
+    template  = file("${path.module}/templates/agent.bu.j2")
+    directory = "${path.module}/templates"
+  }
+
+  context {
+    type = "json"
+    data = sensitive(jsonencode({
+      control_plane_private_ip = local.control_plane_private_ip
+      private_ip               = local.agents_private_ips[count.index]
+      private_gateway          = local.private_gateway
+      authorized_keys          = local.authorized_keys
+
+      # Full form join token `K10<CA hash>::<user>:<secret>`, see
+      # https://github.com/k3s-io/k3s/blob/v1.36.3%2Bk3s1/pkg/clientaccess/token.go
+      k3s_token = "K10${sha256(tls_self_signed_cert.server_ca.cert_pem)}::server:${random_password.k3s_token.result}"
+
+
+      node_name     = "agent-${count.index}"
+      node_password = sha256("${random_password.k3s_token.result}:agent-${count.index}")
+    }))
+  }
+
+  strict_undefined = true
+}
+
+data "ct_config" "agents" {
+  count = length(local.agents_server_types)
+
+  content = data.jinja_template.agents[count.index].result
+  strict  = true
+}
+
+resource "hcloud_server" "agents" {
+  count = length(local.agents_server_types)
+
+  name        = "agent-${count.index}"
+  server_type = local.agents_server_types[count.index]
+  location    = var.cluster_location
+  image       = data.hcloud_image.fcos.id
+  user_data   = sensitive(data.ct_config.agents[count.index].rendered)
+}
+
+resource "hcloud_server_network" "agents" {
+  count = length(local.agents_server_types)
+
+  server_id = hcloud_server.agents[count.index].id
+  subnet_id = hcloud_network_subnet.nodes.id
+  ip        = local.agents_private_ips[count.index]
 }

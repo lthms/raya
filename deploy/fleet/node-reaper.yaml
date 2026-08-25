@@ -1,0 +1,89 @@
+# Deletes the `Node` objects of agents that no longer exist.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-reaper
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-reaper
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-reaper
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: node-reaper
+subjects:
+  - kind: ServiceAccount
+    name: node-reaper
+    namespace: kube-system
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: node-reaper
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: node-reaper
+          restartPolicy: Never
+          containers:
+            - name: reaper
+              image: alpine/k8s:1.36.2
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+
+                  expected="$(jq -r '.agents | length' /fleet/agents.json)"
+                  case "${expected}" in
+                      ''|*[!0-9]*)
+                          echo "agents.json did not yield a count" >&2
+                          exit 1
+                          ;;
+                  esac
+
+                  echo "the fleet is ${expected} agent(s)"
+
+                  # `|| true` because grep exits 1 on no match, which is the
+                  # ordinary case of a cluster with no surplus agents.
+                  nodes="$(kubectl get nodes \
+                      -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                      | grep -E '^agent-[0-9]+$' || true)"
+
+                  for node in ${nodes}; do
+                      index="${node#agent-}"
+                      if [ "${index}" -ge "${expected}" ]; then
+                          echo "deleting ${node}: the fleet does not claim it"
+                          kubectl delete node "${node}" --ignore-not-found
+                      fi
+                  done
+              volumeMounts:
+                - name: fleet
+                  mountPath: /fleet
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+          volumes:
+            - name: fleet
+              configMap:
+                name: cluster-fleet
+

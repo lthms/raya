@@ -7,6 +7,15 @@ locals {
   # range, not of the subnet.
   private_gateway          = cidrhost(local.network_ip_range, 1)
   control_plane_private_ip = cidrhost(local.nodes_ip_range, 10)
+
+  # Agents start a decade above the control plane, so the two ranges never
+  # collide and the address of a node can be read as its role. The index is the
+  # position in local.agents_server_types, which is also the agent's name and the
+  # record dns.tf publishes for it.
+  agents_private_ips = [
+    for i in range(length(local.agents_server_types)) :
+    cidrhost(local.nodes_ip_range, 20 + i)
+  ]
 }
 
 resource "hcloud_network" "raya" {

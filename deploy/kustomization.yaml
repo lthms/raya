@@ -1,0 +1,7 @@
+# Flux's own configuration, which is the only thing this directory holds.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: flux-system
+resources:
+  - fleet.yaml
+

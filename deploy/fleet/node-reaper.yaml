@@ -12,7 +12,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
-    verbs: ["list", "delete"]
+    verbs: ["get", "list", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -61,17 +61,32 @@ spec:
 
                   echo "the fleet is ${expected} agent(s)"
 
-                  # `|| true` because grep exits 1 on no match, which is the
-                  # ordinary case of a cluster with no surplus agents.
-                  nodes="$(kubectl get nodes \
-                      -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-                      | grep -E '^agent-[0-9]+$' || true)"
+                  mark="node-reaper.raya/surplus-since"
 
-                  for node in ${nodes}; do
+                  # One list, so every node is judged against the same snapshot.
+                  nodes="$(kubectl get nodes -o json | jq -r --arg mark "${mark}" '
+                      .items[]
+                      | select(.metadata.name | test("^agent-[0-9]+$"))
+                      | "\(.metadata.name) \(if .metadata.annotations[$mark]
+                                             then "marked" else "unmarked" end)"
+                  ')"
+
+                  echo "${nodes}" | while read -r node state; do
+                      [ -n "${node}" ] || continue
+
                       index="${node#agent-}"
-                      if [ "${index}" -ge "${expected}" ]; then
-                          echo "deleting ${node}: the fleet does not claim it"
+                      if [ "${index}" -lt "${expected}" ]; then
+                          if [ "${state}" = marked ]; then
+                              echo "unmarking ${node}: the fleet claims it again"
+                              kubectl annotate node "${node}" "${mark}-"
+                          fi
+                      elif [ "${state}" = marked ]; then
+                          echo "deleting ${node}"
                           kubectl delete node "${node}" --ignore-not-found
+                      else
+                          echo "marking ${node} for deletion"
+                          kubectl annotate node "${node}" \
+                              "${mark}=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
                       fi
                   done
               volumeMounts:

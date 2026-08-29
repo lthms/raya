@@ -29,6 +29,7 @@ jobs:
       TF_VAR_hcloud_cluster_token: ${{ secrets.HCLOUD_CLUSTER_TOKEN }}
       TF_VAR_betterstack_token: ${{ secrets.BETTERSTACK_TOKEN }}
       TF_VAR_gcp_terraform_credentials: ${{ secrets.GCP_TERRAFORM_CREDENTIALS }}
+      TF_VAR_sops_age_key: ${{ secrets.SOPS_AGE_KEY }}
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
     steps:
       - uses: actions/checkout@v5

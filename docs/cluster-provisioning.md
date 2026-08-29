@@ -176,36 +176,41 @@ zone), and the node password they use to join the cluster.
 
 ## Public DNS
 
-When it comes to DNS, `raya`’s setup is arguably _needlessly_ complicated. Our
-domain names are registered with OVH, but we actually use Google Cloud DNS
-to manage them.
+`raya` assumes every DNS zone it touches lives in Google Cloud DNS, in the same
+project. That includes the parent zone (`local.dns_parent_zone`) it edits to
+delegate its own subdomain.
 
-On the one hand, `raya` maintains a DNS zone for the VMs making it up in Google
-Cloud DNS (`google_dns_managed_zone.primary.dns_name`, defined in `dns.tf`). On
-the other hand, `raya` runs `external-dns` which creates DNS records for
-applications on demand for a few whitelisted (sub)domains (see
-`local.dns_zones`). These zones are owned by our deployment, but the ownership
-remains on OVH, so we also set up the `ovh` provider in order to record
-delegation automatically.
+!!! information
 
-Firstly, the `google` provider needs credentials with the following IAM rights:
+    By force of habit, I am defaulting to [OVH] as my domain name registrar,
+    but I am hosting my DNS zone on Cloud DNS. See [this GitHub
+    project][gh-dns] for more information.
 
-- `roles/dns.admin`, to manage the zones delegated to our cluster and their
-  records.
-- `roles/iam.serviceAccountAdmin`, to create the service account `external-dns`
-  authenticates as (see [The `kube-system` namespace](kube-system.md)).
-- `roles/iam.serviceAccountKeyAdmin`, to mint that service account’s key, which
-  is what travels in the Ignition config.
-- `roles/resourcemanager.projectIamAdmin`, to grant that same service account
+[OVH]: https://www.ovhcloud.com
+[gh-dns]: https://github.com/lthms/dns
+
+`raya` owns one zone, `google_dns_managed_zone.primary` (defined in `dns.tf`),
+named after `var.cluster_managed_subdomain` under the parent zone. It holds
+the records for the VMs. To make that zone reachable,
+`google_dns_record_set.delegation` writes the `NS` record for it into the parent
+zone[^lookup].
+
+[^lookup]: Looked up by name among the project's zones.
+
+The `google` provider needs credentials with the following IAM rights:
+
+- `roles/dns.admin`, to manage both zones and their records.
+- `roles/iam.serviceAccountAdmin`, to create the service accounts `external-dns`
+  and `cert-manager` authenticate as (see [The `kube-system`
+  namespace](kube-system.md)).
+- `roles/iam.serviceAccountKeyAdmin`, to mint those service accounts’ keys,
+  which are what travel in the Ignition config.
+- `roles/resourcemanager.projectIamAdmin`, to grant those same service accounts
   `roles/dns.admin` on the project. This requires to enable the Cloud Resource
   Manager API.
 
 The last three exist because the cluster does not reuse these credentials: it
-gets an identity of its own, holding `roles/dns.admin` on this project.
-
-We also need an OVH service account with a policy allowing it to manage the DNS
-zone for the domains that will be (partially or completely) delegated to Google
-Cloud DNS.
+gets identities of its own, holding `roles/dns.admin` on this project.
 
 When provisioning `raya`’s VMs, the following records are created:
 

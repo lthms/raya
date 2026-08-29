@@ -21,15 +21,3 @@ variable "gcp_terraform_credentials" {
   description = "Google service account key for Terraform"
   sensitive   = true
 }
-
-variable "ovh_client_id" {
-  type        = string
-  description = "OVHcloud OAuth2 client ID"
-  sensitive   = true
-}
-
-variable "ovh_client_secret" {
-  type        = string
-  description = "OVHcloud OAuth2 client secret"
-  sensitive   = true
-}

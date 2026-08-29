@@ -87,8 +87,6 @@ deployment, several repository secrets were created:
 | `HCLOUD_CLUSTER_TOKEN` | Authentication to Hetzner Cloud, for the components running inside the cluster |
 | `BETTERSTACK_TOKEN` | Authentication to BetterStack |
 | `GCP_TERRAFORM_CREDENTIALS` | Authentication to Google Cloud, for Cloud DNS |
-| `OVH_CLIENT_ID` | Authentication to OVHcloud, for the DNS zones delegation to Cloud DNS |
-| `OVH_CLIENT_SECRET` | Authentication to OVHcloud, for the DNS zones delegation to Cloud DNS |
 
 
 These secrets are exposed to both provisioning workflows

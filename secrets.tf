@@ -21,3 +21,9 @@ variable "gcp_terraform_credentials" {
   description = "Google service account key for Terraform"
   sensitive   = true
 }
+
+variable "sops_age_key" {
+  type        = string
+  description = "Age private key to be used to decrypt credentials"
+  sensitive   = true
+}

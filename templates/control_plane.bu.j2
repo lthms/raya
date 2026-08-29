@@ -166,6 +166,11 @@
   contents:
     inline: |
 {% filter trim|indent(6, true) %}{% include "manifests/flux.yaml" %}{% endfilter %}
+- path: /etc/rancher/k3s/manifests/sops-age-secret.yaml
+  mode: 0600
+  contents:
+    inline: |
+{% filter trim|indent(6, true) %}{% include "manifests/sops-age-secret.yaml" %}{% endfilter %}
 
 - path: /etc/rancher/k3s/manifests/hello.yaml
   mode: 0644

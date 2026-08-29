@@ -76,6 +76,8 @@ data "jinja_template" "control_plane" {
 
       # The zone the cluster's own names are built under. See dns.tf.
       primary_dns_zone = trimsuffix(google_dns_managed_zone.primary.dns_name, ".")
+
+      sops_age_key = var.sops_age_key
     }))
   }
 

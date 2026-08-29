@@ -1,0 +1,26 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: cloud-lab
+  namespace: flux-system
+spec:
+  url: https://github.com/lthms/cloud-lab
+  interval: 5m
+  ref:
+    branch: raya
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cloud-lab
+spec:
+  interval: 10m
+  path: .
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: cloud-lab
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age

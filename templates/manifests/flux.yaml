@@ -11,12 +11,11 @@ spec:
   targetNamespace: flux-system
   createNamespace: true
   valuesContent: |
-    # Only the two controllers a git-to-cluster reconciliation needs. The
-    # notification controller has nothing to notify, image automation has no
-    # registry to watch, and each one we do not install is one fewer thing
-    # running on a two-core control plane.
     helmController:
-      create: false
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
     notificationController:
       create: false
     imageAutomationController:

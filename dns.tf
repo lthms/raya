@@ -1,8 +1,12 @@
 locals {
-  # The zones the cluster may write records into.
-  dns_zones = [trimsuffix(google_dns_managed_zone.primary.dns_name, ".")]
-
   dns_parent_zone = "xmu.mx"
+
+  # The zones the cluster may write records into.
+  dns_zones = [
+    trimsuffix(google_dns_managed_zone.primary.dns_name, "."),
+    local.dns_parent_zone,
+    "soap.coffee"
+  ]
 
   # Where Let's Encrypt sends expiry warnings, and the address raya's ACME
   # account is registered under. Not a secret, so it lives with the other naming

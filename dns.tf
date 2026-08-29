@@ -82,16 +82,19 @@ resource "google_project_iam_member" "cert_manager" {
   member  = "serviceAccount:${google_service_account.cert_manager.email}"
 }
 
-resource "ovh_domain_zone_record" "delegation" {
-  # `count` rather than `for_each` because the nameservers are only known once the
-  # zone exists, and both `count` and `for_each` need their extent at plan time —
-  # a literal 4 gives it to them, and Cloud DNS always assigns exactly four to a
-  # public zone. The provider refreshes the OVH zone itself after each write.
-  count = 4
+data "google_dns_managed_zones" "all" {}
 
-  zone      = local.dns_parent_zone
-  subdomain = var.cluster_managed_subdomain
-  fieldtype = "NS"
-  ttl       = 3600
-  target    = google_dns_managed_zone.primary.name_servers[count.index]
+resource "google_dns_record_set" "delegation" {
+  managed_zone = one([
+    for zone in data.google_dns_managed_zones.all.managed_zones :
+    zone.name if zone.dns_name == "${local.dns_parent_zone}."
+  ])
+
+  name = google_dns_managed_zone.primary.dns_name
+  type = "NS"
+  ttl  = 3600
+
+  # No `count` needed now that both zones live in the same provider: the whole
+  # nameserver list goes in as the rrdatas of a single record.
+  rrdatas = google_dns_managed_zone.primary.name_servers
 }

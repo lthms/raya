@@ -51,7 +51,7 @@ spec:
                 - |
                   set -eu
 
-                  expected="$(jq -r '.agents | length' /fleet/agents.json)"
+                  expected="$(jq -r '.agents | length' /cluster/agents.json)"
                   case "${expected}" in
                       ''|*[!0-9]*)
                           echo "agents.json did not yield a count" >&2
@@ -59,7 +59,7 @@ spec:
                           ;;
                   esac
 
-                  echo "the fleet is ${expected} agent(s)"
+                  echo "the cluster has ${expected} agent(s)"
 
                   mark="node-reaper.raya/surplus-since"
 
@@ -77,7 +77,7 @@ spec:
                       index="${node#agent-}"
                       if [ "${index}" -lt "${expected}" ]; then
                           if [ "${state}" = marked ]; then
-                              echo "unmarking ${node}: the fleet claims it again"
+                              echo "unmarking ${node}: the cluster claims it again"
                               kubectl annotate node "${node}" "${mark}-"
                           fi
                       elif [ "${state}" = marked ]; then
@@ -90,15 +90,15 @@ spec:
                       fi
                   done
               volumeMounts:
-                - name: fleet
-                  mountPath: /fleet
+                - name: cluster
+                  mountPath: /cluster
                   readOnly: true
               resources:
                 requests:
                   cpu: 10m
                   memory: 32Mi
           volumes:
-            - name: fleet
+            - name: cluster
               configMap:
                 name: cluster-fleet
 

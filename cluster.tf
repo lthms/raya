@@ -9,7 +9,7 @@ locals {
   # and image/build.sh apply the same rewrite when they stamp the snapshot.
   k3s_version_label = replace(local.k3s_version, "+", "-")
 
-  agents_server_types = jsondecode(file("${path.module}/deploy/fleet/agents.json")).agents
+  agents_server_types = jsondecode(file("${path.module}/deploy/cluster/agents.json")).agents
 }
 
 data "hcloud_image" "fcos" {

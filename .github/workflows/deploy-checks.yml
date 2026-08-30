@@ -1,0 +1,35 @@
+name: Deploy (check)
+on:
+  pull_request:
+permissions:
+  contents: read
+env:
+  FLUX_SCHEMA_VERSION: 0.12.1
+jobs:
+  kustomizations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.36.3
+      - name: Install flux-schema
+        run: |
+          curl -sSL "https://github.com/fluxcd/flux-schema/releases/download/v${FLUX_SCHEMA_VERSION}/flux-schema_${FLUX_SCHEMA_VERSION}_linux_amd64.tar.gz" | tar xz -C /usr/local/bin flux-schema
+      - name: Validate every kustomization under deploy/
+        run: |
+          set -euo pipefail
+          for kustomization in deploy/kustomization.yaml deploy/*/kustomization.yaml; do
+              directory="$(dirname "${kustomization}")"
+              echo "::group::${directory}"
+
+              # Schemas for Kubernetes, Flux and the CNCF ecosystem CRDs.
+              kubectl kustomize "${directory}" \
+                  | flux-schema validate \
+                      --schema-location default \
+                      --schema-location ecosystem \
+                      --skip-json-path v1/Secret:/sops \
+                      --verbose
+
+              echo "::endgroup::"
+          done

@@ -1,13 +1,6 @@
 locals {
   dns_parent_zone = "xmu.mx"
 
-  # The zones the cluster may write records into.
-  dns_zones = [
-    trimsuffix(google_dns_managed_zone.primary.dns_name, "."),
-    local.dns_parent_zone,
-    "soap.coffee"
-  ]
-
   # Where Let's Encrypt sends expiry warnings, and the address raya's ACME
   # account is registered under. Not a secret, so it lives with the other naming
   # decisions rather than in a tfvars file.
@@ -15,8 +8,8 @@ locals {
 
   # The name the `hello` application claims. Built from the pieces above rather
   # than read off the zone, so it is known at plan time: status_page.tf needs it
-  # to declare a monitor, and templates/manifests/hello.yaml to declare the
-  # Ingress. Spelling it once keeps the two from drifting.
+  # to declare a monitor, and it reaches the Ingress through the cluster-vars
+  # ConfigMap that Flux substitutes into deploy/kube-system.
   hello_hostname = "h.${var.cluster_managed_subdomain}.${local.dns_parent_zone}"
 }
 

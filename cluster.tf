@@ -9,7 +9,7 @@ locals {
   # and image/build.sh apply the same rewrite when they stamp the snapshot.
   k3s_version_label = replace(local.k3s_version, "+", "-")
 
-  agents_server_types = jsondecode(file("${path.module}/deploy/fleet/agents.json")).agents
+  agents_server_types = jsondecode(file("${path.module}/deploy/kube-system/agents.json")).agents
 }
 
 data "hcloud_image" "fcos" {
@@ -58,8 +58,7 @@ data "jinja_template" "control_plane" {
       client_ca_cert = tls_self_signed_cert.client_ca.cert_pem
       client_ca_key  = tls_private_key.client_ca.private_key_pem
 
-      managed_dns_zones = local.dns_zones
-      gcp_project       = jsondecode(var.gcp_terraform_credentials).project_id
+      gcp_project = jsondecode(var.gcp_terraform_credentials).project_id
 
       # Two keys, two service accounts: one for the component that publishes
       # names, one for the component that proves we own them. See dns.tf.
@@ -68,14 +67,13 @@ data "jinja_template" "control_plane" {
 
       acme_email = local.acme_email
 
-      hcloud_cluster_token = var.hcloud_cluster_token
-
-      # The name the hello application serves; status_page.tf monitors the same
-      # one. See dns.tf.
-      hello_hostname = local.hello_hostname
-
       # The zone the cluster's own names are built under. See dns.tf.
       primary_dns_zone = trimsuffix(google_dns_managed_zone.primary.dns_name, ".")
+
+      # Handed to Flux through a ConfigMap rather than baked into a manifest,
+      # so deploy/kube-system/hello.yaml and status_page.tf share one spelling.
+      # See dns.tf.
+      hello_hostname = local.hello_hostname
 
       sops_age_key = var.sops_age_key
     }))

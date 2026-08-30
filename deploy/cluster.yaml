@@ -1,0 +1,26 @@
+# The objects that belong to no namespace. Kept apart from deploy/kube-system
+# because that one carries a targetNamespace, which kustomize would stamp onto
+# a CRD whose scope it cannot know.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cluster
+spec:
+  interval: 10m
+  # The ClusterIssuer is rejected until cert-manager, which kube-system
+  # installs, has registered its CRDs. dependsOn only waits for that
+  # Kustomization to apply, not for the Helm release to land.
+  retryInterval: 1m
+  dependsOn:
+    - name: kube-system
+  path: ./deploy/cluster
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: raya
+  # Terraform's naming decisions, written into the cluster by the control
+  # plane's Ignition. See templates/manifests/cluster-vars.yaml.
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

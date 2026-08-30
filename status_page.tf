@@ -66,7 +66,7 @@ resource "betteruptime_monitor" "hello" {
   monitor_type = "keyword"
 
   # traefik/whoami echoes the request back, starting with the name of the pod
-  # that served it. See templates/manifests/hello.yaml.
+  # that served it. See deploy/kube-system/hello.yaml.
   required_keyword = "Hostname:"
 
   check_frequency     = 180

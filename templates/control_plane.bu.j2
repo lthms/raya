@@ -126,40 +126,11 @@
     inline: |
 {% filter trim|indent(6, true) %}{% include "manifests/traefik-config.yaml" %}{% endfilter %}
 
-- path: /etc/rancher/k3s/manifests/external-dns.yaml
-  mode: 0644
-  contents:
-    inline: |
-{% filter trim|indent(6, true) %}{% include "manifests/external-dns.yaml" %}{% endfilter %}
 - path: /etc/rancher/k3s/manifests/gcp-dns-secret.yaml
   mode: 0600
   contents:
     inline: |
 {% filter trim|indent(6, true) %}{% include "manifests/gcp-dns-secret.yaml" %}{% endfilter %}
-
-- path: /etc/rancher/k3s/manifests/cert-manager.yaml
-  mode: 0644
-  contents:
-    inline: |
-{% filter trim|indent(6, true) %}{% include "manifests/cert-manager.yaml" %}{% endfilter %}
-# Applied before cert-manager has registered its CRDs, hence rejected on the
-# first pass; k3s' deploy controller keeps retrying until it lands.
-- path: /etc/rancher/k3s/manifests/cluster-issuer.yaml
-  mode: 0644
-  contents:
-    inline: |
-{% filter trim|indent(6, true) %}{% include "manifests/cluster-issuer.yaml" %}{% endfilter %}
-
-- path: /etc/rancher/k3s/manifests/hcloud-csi.yaml
-  mode: 0644
-  contents:
-    inline: |
-{% filter trim|indent(6, true) %}{% include "manifests/hcloud-csi.yaml" %}{% endfilter %}
-- path: /etc/rancher/k3s/manifests/hcloud-csi-secret.yaml
-  mode: 0600
-  contents:
-    inline: |
-{% filter trim|indent(6, true) %}{% include "manifests/hcloud-csi-secret.yaml" %}{% endfilter %}
 
 - path: /etc/rancher/k3s/manifests/flux.yaml
   mode: 0644
@@ -171,12 +142,11 @@
   contents:
     inline: |
 {% filter trim|indent(6, true) %}{% include "manifests/sops-age-secret.yaml" %}{% endfilter %}
-
-- path: /etc/rancher/k3s/manifests/hello.yaml
+- path: /etc/rancher/k3s/manifests/cluster-vars.yaml
   mode: 0644
   contents:
     inline: |
-{% filter trim|indent(6, true) %}{% include "manifests/hello.yaml" %}{% endfilter %}
+{% filter trim|indent(6, true) %}{% include "manifests/cluster-vars.yaml" %}{% endfilter %}
 {% endblock %}
 
 {% block systemd_units %}

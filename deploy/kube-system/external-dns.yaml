@@ -12,7 +12,6 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: external-dns
-  namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -46,7 +45,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: external-dns
-  namespace: kube-system
 spec:
   replicas: 1
   # Two replicas would race each other over the same records.
@@ -67,15 +65,15 @@ spec:
           args:
             - --source=ingress
             - --source=service
-            # One filter per zone raya owns; see local.dns_zones.
-{%- for zone in managed_dns_zones %}
-            - --domain-filter={{ zone }}
-{%- endfor %}
+            # One filter per zone raya owns.
+            - --domain-filter=ry.xmu.mx
+            - --domain-filter=xmu.mx
+            - --domain-filter=soap.coffee
             - --provider=google
             # We do not run inside the project, so it has to be named; and the
             # zone is public, which keeps a private zone of the same name from
             # ever being picked up by mistake.
-            - --google-project={{ gcp_project }}
+            - --google-project=${gcp_project}
             - --google-zone-visibility=public
             # The TXT records record what this cluster owns, so `sync` only ever
             # deletes what this cluster created.

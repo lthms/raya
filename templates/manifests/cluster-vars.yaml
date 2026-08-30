@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-vars
+  namespace: flux-system
+data:
+  hello_hostname: "{{ hello_hostname }}"
+  acme_email: "{{ acme_email }}"
+  gcp_project: "{{ gcp_project }}"

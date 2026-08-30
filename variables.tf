@@ -12,11 +12,6 @@ variable "cluster_location" {
   description = "The location for the VMs making up the cluster"
 }
 
-# The agent fleet is not declared here. It lives in deploy/fleet/agents.json,
-# which Terraform reads and Flux ships in — see local.agents_server_types
-# in cluster.tf. One agent per element, and its position in the list is its name
-# and its `a-N` record, so removing an element renumbers every agent after it.
-
 variable "control_plane_volume_size" {
   type        = number
   description = "The size of the volume attached to the control plane VM to hold its datastore and PKI"

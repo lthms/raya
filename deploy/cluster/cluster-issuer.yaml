@@ -7,14 +7,14 @@ metadata:
   name: letsencrypt
 spec:
   acme:
-    email: {{ acme_email }}
+    email: ${acme_email}
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
       name: letsencrypt-account-key
     solvers:
       - dns01:
           cloudDNS:
-            project: {{ gcp_project }}
+            project: ${gcp_project}
             serviceAccountSecretRef:
               name: gcp-acme-dns
               key: credentials.json

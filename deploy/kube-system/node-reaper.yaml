@@ -47,58 +47,61 @@ spec:
             - name: reaper
               image: alpine/k8s:1.36.2
               command: ["/bin/sh", "-c"]
+              # Flux substitutes ${vars} into everything this Kustomization
+              # builds, so the shell's own expansions are escaped as $$.
+              # See deploy/kube-system.yaml.
               args:
                 - |
                   set -eu
 
-                  expected="$(jq -r '.agents | length' /fleet/agents.json)"
-                  case "${expected}" in
+                  expected="$$(jq -r '.agents | length' /cluster/agents.json)"
+                  case "$${expected}" in
                       ''|*[!0-9]*)
                           echo "agents.json did not yield a count" >&2
                           exit 1
                           ;;
                   esac
 
-                  echo "the fleet is ${expected} agent(s)"
+                  echo "the cluster has $${expected} agent(s)"
 
                   mark="node-reaper.raya/surplus-since"
 
                   # One list, so every node is judged against the same snapshot.
-                  nodes="$(kubectl get nodes -o json | jq -r --arg mark "${mark}" '
+                  nodes="$$(kubectl get nodes -o json | jq -r --arg mark "$${mark}" '
                       .items[]
-                      | select(.metadata.name | test("^agent-[0-9]+$"))
-                      | "\(.metadata.name) \(if .metadata.annotations[$mark]
+                      | select(.metadata.name | test("^agent-[0-9]+$$"))
+                      | "\(.metadata.name) \(if .metadata.annotations[$$mark]
                                              then "marked" else "unmarked" end)"
                   ')"
 
-                  echo "${nodes}" | while read -r node state; do
-                      [ -n "${node}" ] || continue
+                  echo "$${nodes}" | while read -r node state; do
+                      [ -n "$${node}" ] || continue
 
-                      index="${node#agent-}"
-                      if [ "${index}" -lt "${expected}" ]; then
-                          if [ "${state}" = marked ]; then
-                              echo "unmarking ${node}: the fleet claims it again"
-                              kubectl annotate node "${node}" "${mark}-"
+                      index="$${node#agent-}"
+                      if [ "$${index}" -lt "$${expected}" ]; then
+                          if [ "$${state}" = marked ]; then
+                              echo "unmarking $${node}: the cluster claims it again"
+                              kubectl annotate node "$${node}" "$${mark}-"
                           fi
-                      elif [ "${state}" = marked ]; then
-                          echo "deleting ${node}"
-                          kubectl delete node "${node}" --ignore-not-found
+                      elif [ "$${state}" = marked ]; then
+                          echo "deleting $${node}"
+                          kubectl delete node "$${node}" --ignore-not-found
                       else
-                          echo "marking ${node} for deletion"
-                          kubectl annotate node "${node}" \
-                              "${mark}=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                          echo "marking $${node} for deletion"
+                          kubectl annotate node "$${node}" \
+                              "$${mark}=$$(date -u +%Y-%m-%dT%H:%M:%SZ)"
                       fi
                   done
               volumeMounts:
-                - name: fleet
-                  mountPath: /fleet
+                - name: cluster
+                  mountPath: /cluster
                   readOnly: true
               resources:
                 requests:
                   cpu: 10m
                   memory: 32Mi
           volumes:
-            - name: fleet
+            - name: cluster
               configMap:
                 name: cluster-fleet
 

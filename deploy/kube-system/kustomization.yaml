@@ -1,12 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: kube-system
 resources:
+  - cert-manager.yaml
+  - external-dns.yaml
+  - hcloud-csi.yaml
+  - hcloud-csi-secret.yaml
   - node-reaper.yaml
+  - hello.yaml
 configMapGenerator:
   - name: cluster-fleet
     files:
       - agents.json
 generatorOptions:
   disableNameSuffixHash: true
-

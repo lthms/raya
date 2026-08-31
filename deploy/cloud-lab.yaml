@@ -16,6 +16,10 @@ metadata:
 spec:
   interval: 10m
   path: .
+  targetNamespace: cloud-lab
+  retryInterval: 1m
+  dependsOn:
+    - name: cluster
   prune: true
   sourceRef:
     kind: GitRepository

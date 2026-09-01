@@ -32,7 +32,9 @@ kind: CronJob
 metadata:
   name: node-reaper
 spec:
-  schedule: "*/10 * * * *"
+  # Every minute: a superseded Node holds its pods and its volumes hostage
+  # until it is deleted, so the interval is the outage.
+  schedule: "* * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
@@ -66,27 +68,65 @@ spec:
 
                   mark="node-reaper.raya/surplus-since"
 
+                  # How long a surplus node is left alone before it is deleted.
+                  # agents.json reaches this ConfigMap through Flux and the VM
+                  # is destroyed by a terraform apply, and nothing orders those
+                  # two: for a while the count says a node is gone while the
+                  # node is still serving. Counting passes instead would tie the
+                  # grace period to the cron interval, which is set for the
+                  # superseded rule -- a minute of it, not fifteen.
+                  grace=900
+
                   # One list, so every node is judged against the same snapshot.
-                  nodes="$$(kubectl get nodes -o json | jq -r --arg mark "$${mark}" '
+                  # The sha suffix (see cluster.tf) is optional so that a node
+                  # named under the previous scheme is still recognised, and
+                  # reaped, on the apply that introduces the suffix.
+                  nodes="$$(kubectl get nodes -o json \
+                      | jq -r --arg mark "$${mark}" --argjson grace "$${grace}" '
                       .items[]
-                      | select(.metadata.name | test("^agent-[0-9]+$$"))
-                      | "\(.metadata.name) \(if .metadata.annotations[$$mark]
-                                             then "marked" else "unmarked" end)"
+                      | select(.metadata.name | test("^agent-[0-9]+(-[0-9a-f]+)?$$"))
+                      | (.metadata.annotations[$$mark]
+                         | if . then fromdateiso8601 else null end) as $$since
+                      | [ .metadata.name,
+                          (.metadata.name | capture("^agent-(?<i>[0-9]+)") | .i),
+                          (if any((.status.conditions // [])[];
+                                  .type == "Ready" and .status == "True")
+                           then "ready" else "notready" end),
+                          (if $$since == null then "unmarked"
+                           elif now - $$since > $$grace then "expired"
+                           else "marked" end) ]
+                      | @tsv
                   ')"
 
-                  echo "$${nodes}" | while read -r node state; do
+                  # Indices that something is actually running on right now.
+                  live="$$(echo "$${nodes}" | awk -F'\t' '$$3 == "ready" { print $$2 }')"
+
+                  echo "$${nodes}" | while IFS="$$(printf '\t')" \
+                      read -r node index state mark_state; do
                       [ -n "$${node}" ] || continue
 
-                      index="$${node#agent-}"
+                      # Two Node objects claiming one index, one of them Ready:
+                      # the other is the husk of a VM that was replaced. Nothing
+                      # will revive it, and until it goes the scheduler keeps its
+                      # pods and the attach/detach controller keeps its volumes
+                      # bound to a server that no longer exists. No marking pass
+                      # here -- that delay is downtime.
+                      if [ "$${state}" = notready ] \
+                          && echo "$${live}" | grep -qx "$${index}"; then
+                          echo "deleting $${node}: superseded at index $${index}"
+                          kubectl delete node "$${node}" --ignore-not-found
+                          continue
+                      fi
+
                       if [ "$${index}" -lt "$${expected}" ]; then
-                          if [ "$${state}" = marked ]; then
+                          if [ "$${mark_state}" != unmarked ]; then
                               echo "unmarking $${node}: the cluster claims it again"
                               kubectl annotate node "$${node}" "$${mark}-"
                           fi
-                      elif [ "$${state}" = marked ]; then
-                          echo "deleting $${node}"
+                      elif [ "$${mark_state}" = expired ]; then
+                          echo "deleting $${node}: surplus for over $${grace}s"
                           kubectl delete node "$${node}" --ignore-not-found
-                      else
+                      elif [ "$${mark_state}" = unmarked ]; then
                           echo "marking $${node} for deletion"
                           kubectl annotate node "$${node}" \
                               "$${mark}=$$(date -u +%Y-%m-%dT%H:%M:%SZ)"

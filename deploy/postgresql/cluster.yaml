@@ -1,0 +1,48 @@
+---
+# The one Postgres server everything else shares. Databases inside it are
+# carved out by ext-postgres-operator, from Postgres CRs that live next to the
+# service asking for them.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgresql
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+
+  # ext-postgres-operator needs CREATEDB/CREATEROLE, so it connects as the
+  # superuser. CNPG generates the password into `postgresql-superuser`.
+  enableSuperuserAccess: true
+
+  storage:
+    size: 10Gi
+
+  # isWALArchiver is what turns on archive_command; the operator owns it from
+  # here on.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: r2
+
+  # A memory limit only helps if Postgres is told to stay under it. CNPG sets
+  # no shared_buffers or max_connections of its own, so both are Postgres'
+  # defaults: 128MB and 100. 100 backends at ~10MB peak each is 1GB, which
+  # would OOM-kill the pod against the 512Mi below - hence the cap. This is a
+  # lab instance shared by a handful of services; 50 is plenty.
+  postgresql:
+    parameters:
+      shared_buffers: 128MB  # 25% of the limit, the usual starting point
+      max_connections: "50"
+
+  # requests == limits on both axes puts the pod in the Guaranteed QoS class,
+  # which is what makes CNPG set PG_OOM_ADJUST_VALUE=0: under memory pressure
+  # the OOM killer takes a backend rather than the postmaster, so the instance
+  # shuts down cleanly instead of dying. Worth the CPU ceiling.
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

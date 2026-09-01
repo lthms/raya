@@ -1,0 +1,26 @@
+---
+# The shared Postgres server, plus the operator that carves databases out of
+# it. Separate from cnpg-system so that this only applies once the operator and
+# the barman-cloud plugin are up: the Cluster below is a CNPG CR and references
+# an ObjectStore, both of which are CRDs cnpg-system installs.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: postgresql
+spec:
+  interval: 10m
+  path: ./deploy/postgresql
+  targetNamespace: postgresql
+  retryInterval: 1m
+  dependsOn:
+    - name: cnpg-system
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: raya
+  # r2-secret.yaml holds the R2 credentials barman-cloud backs up with.
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+

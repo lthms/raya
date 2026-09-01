@@ -5,5 +5,7 @@ namespace: flux-system
 resources:
   - cluster.yaml
   - kube-system.yaml
+  - cnpg-system.yaml
+  - postgresql.yaml
   - cloud-lab.yaml
 

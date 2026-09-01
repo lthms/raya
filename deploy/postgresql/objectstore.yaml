@@ -1,0 +1,34 @@
+---
+# Where WAL segments and base backups land. R2 speaks plain S3, so the only
+# R2-specific bits are the account endpoint and region "auto".
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: r2
+spec:
+  # Keep 30 days of restorable history; the sidecar prunes older WALs and
+  # backups on the interval below.
+  retentionPolicy: 30d
+  configuration:
+    destinationPath: s3://raya-postgresql-backup/
+    endpointURL: https://d42e617756d41ef6cbb65b434ee4efec.r2.cloudflarestorage.com
+    s3Credentials:
+      accessKeyId:
+        name: r2-backup
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: r2-backup
+        key: ACCESS_SECRET_KEY
+      region:
+        name: r2-backup
+        key: REGION
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  instanceSidecarConfiguration:
+    retentionPolicyIntervalSeconds: 1800
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi

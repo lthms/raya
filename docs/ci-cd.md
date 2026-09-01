@@ -18,6 +18,8 @@ This workflow runs on Pull Requests. It
 
 - Runs various Packer built-in checks to ensure the correctness of the CoreOS
   image Packer template.
+- Runs `image/check-pins.sh`, so a version bump whose `sha256` was not updated
+  along with it fails the Pull Request instead of the image build.
 - Runs various Terraform built-in checks to ensure the correctness of the
   committed files.
 - Runs `terraform plan` to show the impact of the change on production, so it

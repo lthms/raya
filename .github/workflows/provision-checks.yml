@@ -16,6 +16,7 @@ jobs:
       - run: packer fmt -check -diff image/
       - run: packer init image/fcos.pkr.hcl
       - run: packer validate image/fcos.pkr.hcl
+      - run: ./image/check-pins.sh
   plan:
     runs-on: ubuntu-latest
     env:

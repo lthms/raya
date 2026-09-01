@@ -30,3 +30,47 @@ resource "hcloud_network_subnet" "nodes" {
   ip_range     = local.nodes_ip_range
 }
 
+resource "hcloud_firewall" "nodes" {
+  name = "nodes"
+
+  # SSH is the only way in to a node, and the only way to the API server:
+  # docs/administrating.md tunnels 6443 over it.
+  rule {
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "22"
+    source_ips = ["0.0.0.0/0"]
+  }
+
+  # Traefik runs as a DaemonSet behind ServiceLB, so every node answers on both
+  # ports, control plane included. 80 only redirects — ACME is DNS-01.
+  rule {
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "80"
+    source_ips = ["0.0.0.0/0"]
+  }
+
+  rule {
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "443"
+    source_ips = ["0.0.0.0/0"]
+  }
+
+  # Dropping ICMP costs a ping and breaks path MTU discovery.
+  rule {
+    direction  = "in"
+    protocol   = "icmp"
+    source_ips = ["0.0.0.0/0"]
+  }
+}
+
+resource "hcloud_firewall_attachment" "nodes" {
+  firewall_id = hcloud_firewall.nodes.id
+
+  server_ids = concat(
+    [hcloud_server.control_plane.id],
+    hcloud_server.agents[*].id,
+  )
+}

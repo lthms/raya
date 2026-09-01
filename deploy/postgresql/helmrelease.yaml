@@ -55,6 +55,27 @@ spec:
               spec:
                 template:
                   spec:
+                    initContainers:
+                      - name: wait-for-postgresql
+                        image: ghcr.io/cloudnative-pg/postgresql:17
+                        command:
+                          - sh
+                          - -c
+                          - until pg_isready -q -h postgresql-rw -p 5432; do sleep 2; done
+                        resources:
+                          requests:
+                            cpu: 10m
+                            memory: 32Mi
+                        securityContext:
+                          allowPrivilegeEscalation: false
+                          capabilities:
+                            drop:
+                              - ALL
+                          readOnlyRootFilesystem: true
+                          # Matching the postgres user baked into
+                          # cloudnative-pg postgresql image
+                          runAsUser: 26
+                          runAsGroup: 26
                     containers:
                       - name: ext-postgres-operator
                         env:

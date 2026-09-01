@@ -1,0 +1,27 @@
+---
+# The CloudNativePG operator and the barman-cloud plugin
+# The Postgres server lives in deploy/postgresql, which depends on this one,
+# because its manifests use CRDs (Cluster, ObjectStore) that only exist once
+# this Kustomization has been applied.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cnpg-system
+spec:
+  interval: 10m
+  path: ./deploy/cnpg-system
+  targetNamespace: cnpg-system
+  retryInterval: 1m
+  # kube-system for cert-manager, whose Certificates sign the plugin's channel
+  # to the operator; cluster for the namespace.
+  dependsOn:
+    - name: kube-system
+    - name: cluster
+  # Makes this Kustomization report Ready only once the operator is actually
+  # up, which is what deploy/postgresql waits on.
+  wait: true
+  timeout: 5m
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: raya

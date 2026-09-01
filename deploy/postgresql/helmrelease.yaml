@@ -1,0 +1,71 @@
+---
+# ext-postgres-operator turns the Postgres CRs living next to each service into
+# a database and a role inside the shared server.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ext-postgres-operator
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: ext-postgres-operator
+      version: "3.0.0"  # operator 2.4.0
+      sourceRef:
+        kind: HelmRepository
+        name: movetokube
+      interval: 24h
+
+  # The chart ships Postgres and PostgresUser under crds/, which Flux only
+  # applies on install unless told otherwise.
+  install:
+    crds: Create
+  upgrade:
+    crds: CreateReplace
+
+  values:
+    # Connection settings come from the `postgresql` Secret, mounted whole with
+    # envFrom. It deliberately holds no credentials; see the postRenderer below.
+    existingSecret: postgresql
+
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+
+  # CNPG generates the superuser password, so it cannot be a chart value. An
+  # explicit `env` entry overrides the same key coming from `envFrom`, which is
+  # how POSTGRES_USER/POSTGRES_PASS end up pointing at CNPG's secret while the
+  # rest of the settings still come from `postgresql`. The chart has an `env`
+  # value but it only takes literals, hence patching the Deployment.
+  postRenderers:
+    - kustomize:
+        patches:
+          # Selected by target rather than by the patch's own metadata: Helm
+          # stamps the release namespace onto what it renders, which a
+          # namespace-less strategic merge patch then fails to match.
+          - target:
+              kind: Deployment
+              name: ext-postgres-operator
+            patch: |
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: ext-postgres-operator
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: ext-postgres-operator
+                        env:
+                          - name: POSTGRES_USER
+                            valueFrom:
+                              secretKeyRef:
+                                name: postgresql-superuser
+                                key: username
+                          - name: POSTGRES_PASS
+                            valueFrom:
+                              secretKeyRef:
+                                name: postgresql-superuser
+                                key: password
+

@@ -150,15 +150,19 @@ data "jinja_template" "agents_identity" {
 }
 
 locals {
-  agents_revision = substr(sha256(join("\n", concat([
-    data.jinja_template.agents_identity.result,
-    data.hcloud_image.fcos.id,
-    var.cluster_location,
-  ], local.agents_private_ips))), 0, 8)
+  agents_revisions = [
+    for index in range(length(local.agents_server_types)) :
+    substr(sha256(join("\n", [
+      data.jinja_template.agents_identity.result,
+      data.hcloud_image.fcos.id,
+      var.cluster_location,
+      local.agents_server_types[index],
+    ])), 0, 8)
+  ]
 
   agents_names = [
     for index in range(length(local.agents_server_types)) :
-    "agent-${index}-${local.agents_revision}"
+    "agent-${index}-${local.agents_revisions[index]}"
   ]
 }
 

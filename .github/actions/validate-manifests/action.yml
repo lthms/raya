@@ -1,0 +1,73 @@
+name: Validate manifests
+description: >
+  Build kustomizations and validate them against the schemas of the APIs raya's
+  cluster actually serves. To be run by every repo Flux deploys onto raya.
+
+inputs:
+  paths:
+    description: >
+      Whitespace-separated directories holding a kustomization.yaml. Globs are
+      expanded, and a directory without one is skipped.
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    - uses: azure/setup-kubectl@v4
+      with:
+        version: v1.36.3
+
+    - name: Install flux-schema
+      shell: bash
+      env:
+        FLUX_SCHEMA_VERSION: 0.12.1
+      run: |
+        curl -sSL "https://github.com/fluxcd/flux-schema/releases/download/v${FLUX_SCHEMA_VERSION}/flux-schema_${FLUX_SCHEMA_VERSION}_linux_amd64.tar.gz" | tar xz -C /usr/local/bin flux-schema
+
+    # Neither the built-in nor the ecosystem catalog knows db.movetokube.com, so
+    # its schemas are extracted from the chart's own crds/ directory.
+    #
+    # The version is read out of the HelmRelease next to this action rather than
+    # written down: a composite action gets its whole repository checked out, so
+    # $GITHUB_ACTION_PATH/../../.. is raya. Nothing downstream ever names a
+    # version, and a chart bump here reaches every repo on its next PR.
+    - name: Extract the CRD schemas raya installs
+      shell: bash
+      run: |
+        set -euo pipefail
+        version="$(yq -r '.spec.chart.spec.version' \
+            "${GITHUB_ACTION_PATH}/../../../deploy/postgresql/helmrelease.yaml")"
+        echo "ext-postgres-operator ${version}"
+
+        curl -sSL --fail "https://github.com/movetokube/postgres-operator/releases/download/ext-postgres-operator-${version}/ext-postgres-operator-${version}.tgz" \
+            | tar xz -C "${RUNNER_TEMP}" ext-postgres-operator/crds
+        flux-schema extract crd "${RUNNER_TEMP}"/ext-postgres-operator/crds/*.yaml \
+            --output-dir "${RUNNER_TEMP}/crd-schemas" \
+            --strip-description
+
+    # Building is already a check of its own: a bad resource path or
+    # unparseable YAML fails here rather than in the cluster.
+    #
+    # --skip-json-path drops the sops block, which Flux strips at apply time and
+    # which is not part of the Secret schema.
+    - name: Build and validate
+      shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+      run: |
+        set -euo pipefail
+        # Deliberately unquoted, so the globs in PATHS expand.
+        for directory in ${PATHS}; do
+            [ -f "${directory}/kustomization.yaml" ] || continue
+            echo "::group::${directory}"
+
+            kubectl kustomize "${directory}" \
+                | flux-schema validate \
+                    --schema-location default \
+                    --schema-location ecosystem \
+                    --schema-location "${RUNNER_TEMP}/crd-schemas" \
+                    --skip-json-path v1/Secret:/sops \
+                    --verbose
+
+            echo "::endgroup::"
+        done

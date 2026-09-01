@@ -116,6 +116,52 @@ resource "hcloud_volume_attachment" "control_plane_k3s" {
   automount = false
 }
 
+locals {
+  # Everything the agent's Ignition needs that does not say which agent it is.
+  # The identity and the private address are the only per-index pieces; both are
+  # stubbed out for the render below and filled in for the real one.
+  agents_shared_context = {
+    control_plane_private_ip = local.control_plane_private_ip
+    private_gateway          = local.private_gateway
+    authorized_keys          = local.authorized_keys
+
+    # Full form join token `K10<CA hash>::<user>:<secret>`, see
+    # https://github.com/k3s-io/k3s/blob/v1.36.3%2Bk3s1/pkg/clientaccess/token.go
+    k3s_token = "K10${sha256(tls_self_signed_cert.server_ca.cert_pem)}::server:${random_password.k3s_token.result}"
+  }
+}
+
+data "jinja_template" "agents_identity" {
+  source {
+    template  = file("${path.module}/templates/agent.bu.j2")
+    directory = "${path.module}/templates"
+  }
+
+  context {
+    type = "json"
+    data = sensitive(jsonencode(merge(local.agents_shared_context, {
+      node_name     = "agent"
+      node_password = ""
+      private_ip    = "0.0.0.0"
+    })))
+  }
+
+  strict_undefined = true
+}
+
+locals {
+  agents_revision = substr(sha256(join("\n", concat([
+    data.jinja_template.agents_identity.result,
+    data.hcloud_image.fcos.id,
+    var.cluster_location,
+  ], local.agents_private_ips))), 0, 8)
+
+  agents_names = [
+    for index in range(length(local.agents_server_types)) :
+    "agent-${index}-${local.agents_revision}"
+  ]
+}
+
 data "jinja_template" "agents" {
   count = length(local.agents_server_types)
 
@@ -126,20 +172,13 @@ data "jinja_template" "agents" {
 
   context {
     type = "json"
-    data = sensitive(jsonencode({
-      control_plane_private_ip = local.control_plane_private_ip
-      private_ip               = local.agents_private_ips[count.index]
-      private_gateway          = local.private_gateway
-      authorized_keys          = local.authorized_keys
+    data = sensitive(jsonencode(merge(local.agents_shared_context, {
+      private_ip = local.agents_private_ips[count.index]
+      node_name  = local.agents_names[count.index]
 
-      # Full form join token `K10<CA hash>::<user>:<secret>`, see
-      # https://github.com/k3s-io/k3s/blob/v1.36.3%2Bk3s1/pkg/clientaccess/token.go
-      k3s_token = "K10${sha256(tls_self_signed_cert.server_ca.cert_pem)}::server:${random_password.k3s_token.result}"
-
-
-      node_name     = "agent-${count.index}"
-      node_password = sha256("${random_password.k3s_token.result}:agent-${count.index}")
-    }))
+      # Derived from the name, not random. See templates/agent.bu.j2.
+      node_password = sha256("${random_password.k3s_token.result}:${local.agents_names[count.index]}")
+    })))
   }
 
   strict_undefined = true

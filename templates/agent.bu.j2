@@ -11,13 +11,6 @@
       node-ip: {{ private_ip }}
       flannel-iface: enp7s0
 
-# k3s remembers a per-node password, hashed into an immutable Secret named after
-# the node, and refuses a node presenting a different one. That Secret is
-# garbage-collected with its Node — k3s owns it by reference — but nothing here
-# deletes the Node of a machine that is gone, so replacing this VM would meet a
-# hash a fresh random password could never match. Deriving the password from the
-# cluster token and the node name instead means the replacement presents exactly
-# what the Secret already holds, and an agent can be rebuilt at will.
 - path: /etc/rancher/node/password
   mode: 0600
   contents:

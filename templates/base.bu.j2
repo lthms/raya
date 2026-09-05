@@ -55,6 +55,31 @@ storage:
           cat >"${CONFIG_DIR}/50-public-ip.yaml" <<EOF
           node-external-ip: "${public_ip}"
           EOF
+    - path: /etc/nftables/raya.nft
+      mode: 0644
+      contents:
+        inline: |
+          # Hetzner's metadata service tells whoever reaches 169.254.169.254
+          # who this node is, so the pod network has no business there. Egress
+          # from a pod is masqueraded to the node's address on its way out, and
+          # the forward path is the last place the pod is still visible:
+          #
+          #   pod --[cni0]--> forward (here) --[masquerade]--> enp1s0
+          #
+          # A table of our own, hooked ahead of priority 0, rather than a rule
+          # in the filter chains flannel and kube-proxy rewrite at will.
+          table inet raya {}
+          delete table inet raya
+
+          table inet raya {
+            chain forward {
+              type filter hook forward priority -10; policy accept;
+
+              # 10.42.0.0/16 is k3s' default cluster-cidr. Reject rather than
+              # drop, so a client fails at once instead of hanging.
+              ip saddr 10.42.0.0/16 ip daddr 169.254.169.254 reject with icmpx type admin-prohibited
+            }
+          }
 {% filter trim|indent(4, true) %}{% block storage_files %}{% endblock %}{% endfilter %}
 
 systemd:
@@ -88,6 +113,22 @@ systemd:
         ExecStart=/usr/local/bin/k3s-init.sh
         Restart=on-failure
         RestartSec=5s
+
+        [Install]
+        RequiredBy=k3s-setup.target
+
+    # In place before k3s starts, so no pod ever races the rule.
+    - name: metadata-guard.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Keep the pod network away from the metadata service
+        Before=k3s-setup.target
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/sbin/nft -f /etc/nftables/raya.nft
 
         [Install]
         RequiredBy=k3s-setup.target

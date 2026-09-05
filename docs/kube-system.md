@@ -1,10 +1,7 @@
 # The kube-system namespace
 
-`k3s` ships a handful of components of its own in `kube-system`, and installs
-most of them from bundled Helm charts (see [the boot sequence](boot.md)).
-
-This page describes what the resulting cluster offers to the charts deployed on
-top of it.
+`raya` extends the `kube-system` namespace with system services that can
+benefit any other workloads.
 
 ## Traefik, the ingress controller
 
@@ -100,7 +97,8 @@ nothing to configure on the entrypoint itself.
 
 `external-dns` automates the lifecycle of records necessary for an application
 deployed on `raya` to be reached via its declared domain. The DNS zones
-`external-dns` can manage are defined in `local.dns_zones`.
+`external-dns` can manage are passed as command line arguments in
+`deploy/kube-system/external-dns.yaml`.
 
 By default, `external-dns` writes the address reported by the Ingress’ load
 balancer. In our case, since Traefik is a `DaemonSet`, `external-dns` creates
@@ -144,19 +142,19 @@ which one of our application needs. Google Cloud DNS is a solver `cert-manager`
 implements natively. It authenticates as its own service account with
 `dns.admin` granted.
 
-### Checking propagation against public resolvers
+!!! note
 
-`cert-manager` will not tell Let's Encrypt a challenge is ready until it has seen
-the record itself, and by default it asks the zone's authoritative nameservers.
-With some cloud providers, this can be be an issue as such requests can be
-routed to a local instance whose view of the zone lags behind the public one.
-In that case, the check fails with `NXDOMAIN` on a record that resolves fine
-from outside.
-
-`raya` therefore runs `cert-manager` with `--dns01-recursive-nameservers-only`
-and `--dns01-recursive-nameservers` pointed at `1.1.1.1` and `8.8.8.8`[^vultr].
-The propagation check is answered by the same kind of resolver Let's Encrypt
-will use.
+    `cert-manager` will not tell Let's Encrypt a challenge is ready until it has seen
+    the record itself, and by default it asks the zone's authoritative nameservers.
+    With some cloud providers, this can be be an issue as such requests can be
+    routed to a local instance whose view of the zone lags behind the public one.
+    In that case, the check fails with `NXDOMAIN` on a record that resolves fine
+    from outside.
+    
+    `raya` therefore runs `cert-manager` with `--dns01-recursive-nameservers-only`
+    and `--dns01-recursive-nameservers` pointed at `1.1.1.1` and `8.8.8.8`[^vultr].
+    The propagation check is answered by the same kind of resolver Let's Encrypt
+    will use.
 
 [^vultr]: This was the case for Vultr. It's not clear if Hetzner would suffer
     the same issue, but relying on public DNS worked in the past so there is
@@ -185,46 +183,12 @@ The controller authenticates with a token of its own, held in the `hcloud`
 actually share the same rights (Hetzner does not provide a fine-grained
 capabilities system for its API token).
 
-## Flux, the delivery solution
-
-The control plane API endpoint is only reachable from within the cluster, via
-its private interface. This means our only opportunity to _push_ something to
-the cluster is at provision time via the Ignition config of the control plane.
-
-To deploy workloads, we use [Flux] to _pull_ specs instead from git
-repositories. Flux is configured in two steps. A “bootstrap” is embedded in the
-Ignition config. This bootstraps declares a `GitRepository` resource for
-`raya`’s own upstream, and a `Kustomization` telling Flux to watch the
-`deploy/` directory.
-
-As a consequence, any (transitive) changes to `deploy/kustomization.yaml` will
-trigger Flux to sync the cluster accordingly.
-
-Only the two controllers a git-to-cluster reconciliation needs are installed,
-`source-controller` and `kustomize-controller`. Helm releases keep coming from
-`k3s`’ own controller, as every chart above does.
-
-!!! note
-
-    The chart ships four more controllers, which `raya` turns off.
-
-    - `helm-controller` reconciles `HelmRelease` resources. It is what deploying
-      applications packaged as Helm charts would need.
-    - `image-reflector-controller` and `image-automation-controller` watch a
-      registry for new tags and commit the update back to git. That would
-      streamline remaining up-to-date.
-    - `notification-controller` sends events outwards and receives webhooks,
-      which lets a push trigger a sync rather than waiting for the interval to
-      come round.
-
-[Flux]: https://fluxcd.io/
-
 ## The fleet, declared once
 
-Flux carries `deploy/fleet/agents.json` into the cluster as a `ConfigMap` via a
-`configMapGenerator`.
+Flux carries `deploy/kube-system/agents.json` into the cluster as a `ConfigMap`
+via a `configMapGenerator`.
 
-Every ten minutes, `deploy/fleet/node-reaper.yaml` compares the fleet the file
+Every minute, `deploy/kube-system/node-reaper.yaml` compares the fleet the file
 declares against the `agent-N` nodes that exist, and deletes the `NotFound`
 node that should not exist anymore. This is a lot more convenient than trying
 to garbage collect discarded nodes when we downscale the cluster.

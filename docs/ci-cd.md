@@ -52,6 +52,32 @@ and unblock running `terraform apply`.
     Images are snapshots stored in Hetzner Cloud, and they are never deleted by
     this IaC. Bookkeeping remains manual for now.
 
+### `deploy-checks.yml` and the `validate-manifests` action
+
+For each directory holding a `kustomization.yaml`, this workflow builds the
+kustomization and validates the result. The build is already a check: a bad
+resource path or unparseable YAML fails here rather than in the cluster. The
+validation then matches every object against the schemas of the APIs the
+cluster actually serves.
+
+The logic lives in `.github/actions/validate-manifests` rather than in the
+workflow, because the repositories Flux deploys onto `raya` need exactly the
+same validation logic. `deploy-checks.yml` is only a caller, pointing the
+action at `deploy` and `deploy/*`.
+
+!!! note
+
+    The action reads the `ext-postgres-operator` version out of
+    `deploy/postgresql/helmrelease.yaml` instead of pinning one of its own, so
+    a chart bump reaches every repository using the action on its next Pull
+    Request.
+
+!!! note
+
+    Encrypted files carry a `sops` block that is not part of the `Secret`
+    schema, and that Flux strips at apply time. Validation skips it explicitly
+    (`--skip-json-path v1/Secret:/sops`).
+
 ## Terraform Backend
 
 Terraform state is hosted on [HCP Terraform](https://app.terraform.io), under
@@ -86,9 +112,9 @@ deployment, several repository secrets were created:
 | ------------ | ---- |
 | `TF_API_TOKEN` | Authentication to HCP Terraform |
 | `HCLOUD_TOKEN` | Authentication to Hetzner Cloud |
-| `HCLOUD_CLUSTER_TOKEN` | Authentication to Hetzner Cloud, for the components running inside the cluster |
 | `BETTERSTACK_TOKEN` | Authentication to BetterStack |
 | `GCP_TERRAFORM_CREDENTIALS` | Authentication to Google Cloud, for Cloud DNS |
+| `SOPS_AGE_KEY` | The age private key, handed to the cluster so Flux can decrypt the encrypted manifests in `deploy/` |
 
 
 These secrets are exposed to both provisioning workflows
@@ -111,14 +137,6 @@ TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
 `image/build.sh` queries the Hetzner API with it and Packer authenticates the
 build. That use has nothing to do with Terraform variables, which is why the
 same secret appears under two different names depending on the job.
-
-`HCLOUD_CLUSTER_TOKEN` is a second, distinct Hetzner token, created by hand in
-the console. It is never used by Terraform itself: it is handed to the cluster,
-for the components running there that need to talk to the Hetzner API. Today
-that is the [CSI driver](kube-system.md), which authenticates with it to create
-and attach volumes. Hetzner tokens cannot be scoped, so keeping the two apart
-does not reduce what the cluster can do — it means the cluster's token can be
-revoked without locking the deployment pipeline out.
 
 !!! warning
 

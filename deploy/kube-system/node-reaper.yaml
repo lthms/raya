@@ -41,6 +41,7 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 2
+      activeDeadlineSeconds: 60
       template:
         spec:
           serviceAccountName: node-reaper

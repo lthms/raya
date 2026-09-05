@@ -183,6 +183,22 @@ The controller authenticates with a token of its own, held in the `hcloud`
 actually share the same rights (Hetzner does not provide a fine-grained
 capabilities system for its API token).
 
+## CoreDNS
+
+`k3s` deploys CoreDNS without a replica count. DNS for the whole cluster would
+fail whenever the node running it is being replaced.
+
+`deploy/kube-system/coredns-autoscaler.yaml` adds
+[`cluster-proportional-autoscaler`][cpa] to keep the count equal to the number
+of nodes. It is the usual instrument for CoreDNS. `raya` uses it at its
+simplest, one replica per node.
+
+Since `k3s` gives CoreDNS a topology spread constraint of `maxSkew: 1` over
+`kubernetes.io/hostname`, two replicas can never share a node, ensuring that
+DNS between surviving pods will keep working as long as one node is running.
+
+[cpa]: https://github.com/kubernetes-sigs/cluster-proportional-autoscaler
+
 ## The fleet, declared once
 
 Flux carries `deploy/kube-system/agents.json` into the cluster as a `ConfigMap`

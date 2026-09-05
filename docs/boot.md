@@ -49,7 +49,6 @@ graph TB
     nm["NetworkManager<br/>enp7s0 static · public interface by DHCP"]
     online(["network-online.target"])
     init["k3s-init.service<br/>writes config.yaml.d/50-public-ip.yaml"]
-    guard["metadata-guard.service<br/>nftables · keeps the pod network<br/>off 169.254.169.254"]
     mkfs["mkfs-k3s-volume.service<br/>creates a filesystem<br/>if the device has none"]
     mount["var-lib-rancher-k3s.mount<br/>/var/lib/rancher/k3s"]
     seed["k3s-seed-pki.service<br/>reconciles the data directory<br/>with the Ignition config"]
@@ -63,7 +62,6 @@ graph TB
     tmpfiles --> setup
     online --> setup
     init --> setup
-    guard --> setup
     mount --> setup
     seed --> setup
     manifests --> setup
@@ -76,7 +74,7 @@ graph TB
   classDef shared stroke:#3f7fbf,stroke-width:2px
   classDef control stroke:#bf7f3f,stroke-width:2px
 
-  class attach_nic,tmpfiles,nm,online,init,guard,setup shared
+  class attach_nic,tmpfiles,nm,online,init,setup shared
   class attach_vol,mkfs,mount,seed,manifests,k3s control
 ```
 
@@ -123,7 +121,6 @@ graph TB
     nm["NetworkManager<br/>enp7s0 static · public interface by DHCP"]
     online(["network-online.target"])
     init["k3s-init.service<br/>writes config.yaml.d/50-public-ip.yaml"]
-    guard["metadata-guard.service<br/>nftables · keeps the pod network<br/>off 169.254.169.254"]
     setup(["k3s-setup.target"])
     k3s["k3s-agent.service<br/>k3s agent"]
 
@@ -132,7 +129,6 @@ graph TB
     tmpfiles --> setup
     online --> setup
     init --> setup
-    guard --> setup
     setup --> k3s
   end
 
@@ -141,6 +137,6 @@ graph TB
   classDef shared stroke:#3f7fbf,stroke-width:2px
   classDef agent stroke:#bf7f3f,stroke-width:2px
 
-  class attach_nic,tmpfiles,nm,online,init,guard,setup shared
+  class attach_nic,tmpfiles,nm,online,init,setup shared
   class k3s agent
 ```

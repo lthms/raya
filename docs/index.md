@@ -4,6 +4,11 @@
 cluster hosted by Hetzner (`hel1` 🇫🇮). My goal with Hetzner is to explore
 and experiment with how software is being run in 2026.
 
+!!! warning
+
+    `raya` is by no means a production-grade cluster. It is a personal
+    experimentation playground and nothing more.
+
 I have three rules with this project:
 
 1. Nothing is deployed manually. `raya`’s [Git repository][repo] is the single
@@ -15,7 +20,7 @@ I have three rules with this project:
 
 [repo]: https://github.com/lthms/raya
 
-!!! important "Voluntary AI Disclosure"
+!!! info "Voluntary AI Disclosure"
 
     I have used a coding assistant to build `raya`. Most of the code and
     configuration making up `raya` has been drafted by a LLM, then reviewed,

@@ -161,18 +161,20 @@ This enables mutual authentication of the control plane and the agents, as they
 can check the CA bundle provided by the control plane instead of having to
 trust it.
 
-### Identity of the agents
 
-Agents are declared in `deploy/kube-system/agents.json`. Its position gives
-the VM its name (`agent-$i`), its private address (`10.0.1.$(( 20 + i ))`), and
-the record published for it (`a$i` under the managed zone).
+### Identity of the cluster nodes
+
+Agents are declared in `deploy/kube-system/agents.json`. Their position give
+the VM their name (`agent-$i`), their private address (`10.0.1.$(( 20 + i ))`),
+and the record published for it (`a$i` under the managed zone).
 
 The identity of the node joining the cluster also depends on the VM initial
-state. That is, the node running on the `agent-0` VM receives a unique name
-like `agent-0-896ef0a5`, which changes the next time `agent-0` is replaced by
-Terraform because its initial state needs to change. The short SHA256 suffix is
-computed by Terraform from the future agent’s configuration (Ignition config,
-k3s version, etc.) in `cluster.tf`[^notexactly].
+state, whether it runs on the control plane VM or an agent VM. That is, the
+node running on the `agent-0` VM (resp. `control-plane`) receives a unique name
+like `agent-0-896ef0a5` (resp. `control-plane-896ef0a5`), which changes the
+next time `agent-0` (resp. `control-plane`) is replaced by Terraform. The short
+SHA256 suffix is computed by Terraform from the future VM’s configuration
+(Ignition config, k3s version, etc.) in `cluster.tf`[^notexactly].
 
 [^notexactly]: In reality, this is a little more complicated. The Ignition
     config sent to the agents as `user_data` contains the name of the node they

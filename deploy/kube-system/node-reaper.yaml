@@ -132,6 +132,33 @@ spec:
                               "$${mark}=$$(date -u +%Y-%m-%dT%H:%M:%SZ)"
                       fi
                   done
+
+                  # The control plane is a singleton, so neither the index nor
+                  # the count rules above mean anything for it. Only one shape
+                  # is ever observable: this job is talking to an API server, so
+                  # a Ready control plane exists, and any NotReady one beside it
+                  # is the husk of the machine it replaced. Same suffix
+                  # leniency as the agents, for the apply that introduces it.
+                  control_planes="$$(kubectl get nodes -o json | jq -r '
+                      .items[]
+                      | select(.metadata.name | test("^control-plane(-[0-9a-f]+)?$$"))
+                      | [ .metadata.name,
+                          (if any((.status.conditions // [])[];
+                                  .type == "Ready" and .status == "True")
+                           then "ready" else "notready" end) ]
+                      | @tsv
+                  ')"
+
+                  if echo "$${control_planes}" \
+                      | awk -F'\t' '$$2 == "ready" { found = 1 }
+                                    END { exit !found }'; then
+                      echo "$${control_planes}" \
+                          | awk -F'\t' '$$2 == "notready" { print $$1 }' \
+                          | while read -r node; do
+                              echo "deleting $${node}: superseded control plane"
+                              kubectl delete node "$${node}" --ignore-not-found
+                          done
+                  fi
               volumeMounts:
                 - name: cluster
                   mountPath: /cluster

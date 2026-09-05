@@ -27,6 +27,81 @@ locals {
   control_plane_volume_device = "/dev/disk/by-id/scsi-0HC_Volume_${hcloud_volume.control_plane_k3s.id}"
 }
 
+locals {
+  # Everything the control plane's Ignition needs that does not say which node
+  # it is. The name is the one piece left out: it is a hash of this render, so
+  # it cannot be part of it.
+  control_plane_shared_context = {
+    private_ip      = local.control_plane_private_ip
+    private_gateway = local.private_gateway
+    authorized_keys = local.authorized_keys
+    k3s_token       = random_password.k3s_token.result
+
+    k3s_volume_device = local.control_plane_volume_device
+    # systemd derives a .device unit name from the path by escaping `-` as
+    # `\x2d` and turning `/` into `-`; the ordering in the units below needs
+    # that name, and there is no way to ask systemd for it from here.
+    k3s_volume_device_unit = format("%s.device", replace(
+      replace(trimprefix(local.control_plane_volume_device, "/"), "-", "\\x2d"),
+      "/", "-",
+    ))
+
+    # Seeded into /var/lib/rancher/k3s/server/tls before k3s first starts, so
+    # the cluster's trust root comes from here rather than from the node. See
+    # pki.tf.
+    server_ca_cert = tls_self_signed_cert.server_ca.cert_pem
+    server_ca_key  = tls_private_key.server_ca.private_key_pem
+    client_ca_cert = tls_self_signed_cert.client_ca.cert_pem
+    client_ca_key  = tls_private_key.client_ca.private_key_pem
+
+    gcp_project = jsondecode(var.gcp_terraform_credentials).project_id
+
+    # Two keys, two service accounts: one for the component that publishes
+    # names, one for the component that proves we own them. See dns.tf.
+    gcp_dns_credentials      = google_service_account_key.external_dns.private_key
+    gcp_acme_dns_credentials = google_service_account_key.cert_manager.private_key
+
+    acme_email = local.acme_email
+
+    # The zone the cluster's own names are built under. See dns.tf.
+    primary_dns_zone = trimsuffix(google_dns_managed_zone.primary.dns_name, ".")
+
+    # Handed to Flux through a ConfigMap rather than baked into a manifest,
+    # so deploy/kube-system/hello.yaml and status_page.tf share one spelling.
+    # See dns.tf.
+    hello_hostname = local.hello_hostname
+
+    sops_age_key = var.sops_age_key
+  }
+}
+
+data "jinja_template" "control_plane_identity" {
+  source {
+    template  = file("${path.module}/templates/control_plane.bu.j2")
+    directory = "${path.module}/templates"
+  }
+
+  context {
+    type = "json"
+    data = sensitive(jsonencode(merge(local.control_plane_shared_context, {
+      node_name = "control-plane"
+    })))
+  }
+
+  strict_undefined = true
+}
+
+locals {
+  control_plane_revision = substr(sha256(join("\n", [
+    data.jinja_template.control_plane_identity.result,
+    data.hcloud_image.fcos.id,
+    var.cluster_location,
+    var.control_plane_server_type,
+  ])), 0, 8)
+
+  control_plane_name = "control-plane-${local.control_plane_revision}"
+}
+
 data "jinja_template" "control_plane" {
   source {
     template  = file("${path.module}/templates/control_plane.bu.j2")
@@ -35,48 +110,9 @@ data "jinja_template" "control_plane" {
 
   context {
     type = "json"
-    data = sensitive(jsonencode({
-      private_ip      = local.control_plane_private_ip
-      private_gateway = local.private_gateway
-      authorized_keys = local.authorized_keys
-      k3s_token       = random_password.k3s_token.result
-
-      k3s_volume_device = local.control_plane_volume_device
-      # systemd derives a .device unit name from the path by escaping `-` as
-      # `\x2d` and turning `/` into `-`; the ordering in the units below needs
-      # that name, and there is no way to ask systemd for it from here.
-      k3s_volume_device_unit = format("%s.device", replace(
-        replace(trimprefix(local.control_plane_volume_device, "/"), "-", "\\x2d"),
-        "/", "-",
-      ))
-
-      # Seeded into /var/lib/rancher/k3s/server/tls before k3s first starts, so
-      # the cluster's trust root comes from here rather than from the node. See
-      # pki.tf.
-      server_ca_cert = tls_self_signed_cert.server_ca.cert_pem
-      server_ca_key  = tls_private_key.server_ca.private_key_pem
-      client_ca_cert = tls_self_signed_cert.client_ca.cert_pem
-      client_ca_key  = tls_private_key.client_ca.private_key_pem
-
-      gcp_project = jsondecode(var.gcp_terraform_credentials).project_id
-
-      # Two keys, two service accounts: one for the component that publishes
-      # names, one for the component that proves we own them. See dns.tf.
-      gcp_dns_credentials      = google_service_account_key.external_dns.private_key
-      gcp_acme_dns_credentials = google_service_account_key.cert_manager.private_key
-
-      acme_email = local.acme_email
-
-      # The zone the cluster's own names are built under. See dns.tf.
-      primary_dns_zone = trimsuffix(google_dns_managed_zone.primary.dns_name, ".")
-
-      # Handed to Flux through a ConfigMap rather than baked into a manifest,
-      # so deploy/kube-system/hello.yaml and status_page.tf share one spelling.
-      # See dns.tf.
-      hello_hostname = local.hello_hostname
-
-      sops_age_key = var.sops_age_key
-    }))
+    data = sensitive(jsonencode(merge(local.control_plane_shared_context, {
+      node_name = local.control_plane_name
+    })))
   }
 
   strict_undefined = true

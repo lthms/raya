@@ -1,4 +1,28 @@
-# Private network
+# Networking
+
+## Firewall
+
+Every VM making up `raya` is attached to the same `hcloud_firewall`, declared
+in `network.tf`. It only defines inbound rules, all from `0.0.0.0/0`.
+
+| Port | Why |
+| ---- | --- |
+| `22` | The only way into a node, and the only way to the control plane API — which is [reached through an SSH tunnel](administrating.md). |
+| `80` | Traefik’s `web` entrypoint. |
+| `443` | Traefik’s `websecure` entrypoint. |
+| ICMP | `ping`, which [the status page](status-page.md) relies on. |
+
+Ports `80` and `443` are open on *every* node, control plane included, because
+Traefik runs as a `DaemonSet` behind ServiceLB (see [the `kube-system`
+namespace](kube-system.md)).
+
+!!! note
+
+    A Hetzner Cloud firewall only filters the public interface. Traffic inside
+    the `nodes` subnet is never subject to it, which is why the k3s API (`6443`)
+    needs no rule.
+
+## Private Network
 
 VMs making up `raya` talk to each other via a dedicated private network which
 is declared in `network.tf`. The VMs are all attached to the same subnet
@@ -17,9 +41,7 @@ Hetzner and use cases that may arise at a later date. The control plane takes
 
 ## Topology
 
-The current topology is as follows (location clusters are shown to highlight
-the impact of one of Hetzner’s locations going down, they do not represent any
-kind of partitioning inside the `nodes` subnet):
+The current topology is as follows[^location]:
 
 ```mermaid
 graph TB
@@ -27,6 +49,7 @@ graph TB
     subgraph zone["Hetzner eu-central"]
       subgraph hel1["hel1 · Helsinki"]
         cp["control-plane<br/>10.0.1.10"]
+        a0["agent-0<br/>10.0.1.20"]
       end
       subnet(["subnet nodes · 10.0.1.0/24"])
     end
@@ -34,8 +57,13 @@ graph TB
   end
 
   cp --> subnet
+  a0 --> subnet
   subnet -.->|routes 10.0.0.0/8 via| gateway
 
   classDef failureDomain stroke-dasharray: 5 5
   class hel1 failureDomain
 ```
+
+[^location]:  Location clusters are shown to highlight the impact of one of
+    Hetzner’s locations going down, they do not represent any kind of
+    partitioning inside the `nodes` subnet)

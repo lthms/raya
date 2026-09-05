@@ -19,7 +19,7 @@ namely:
    subnet (via `/etc/NetworkManager/system-connections/enp7s0.nmconnection`
    provisioned by Ignition). This configuration step gates the
    `network-online.target` because the NM configuration file explicitely
-   specify `may-fail` to true.
+   specify `may-fail` to `false`.
 3. Once the `network-online.target` is reached, the private interface is
    configured; the public one is up in practice, but nothing guarantees it. We
    then run a one-shot service (`k3s-init`) to complete the configuration of
@@ -122,19 +122,21 @@ graph TB
     online(["network-online.target"])
     init["k3s-init.service<br/>writes config.yaml.d/50-public-ip.yaml"]
     setup(["k3s-setup.target"])
-    agent["k3s-agent.service<br/>k3s agent"]
+    k3s["k3s-agent.service<br/>k3s agent"]
 
     nm --> online --> init
 
     tmpfiles --> setup
     online --> setup
     init --> setup
-    setup --> agent
+    setup --> k3s
   end
 
   attach_nic -.->|enp7s0 appears| nm
 
   classDef shared stroke:#3f7fbf,stroke-width:2px
+  classDef agent stroke:#bf7f3f,stroke-width:2px
 
-  class attach_nic,tmpfiles,nm,online,init,setup,agent shared
+  class attach_nic,tmpfiles,nm,online,init,setup shared
+  class k3s agent
 ```

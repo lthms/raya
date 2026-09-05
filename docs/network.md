@@ -22,6 +22,11 @@ namespace](kube-system.md)).
     the `nodes` subnet is never subject to it, which is why the k3s API (`6443`)
     needs no rule.
 
+Additionally, every VM making up `raya` also configures its local firewall to
+prevent pods running on them to access Hetzner metadata server
+(`169.254.169.254`). Reaching the metadata server could allow a malicious pod
+running on the control plane VM the secrets embedded in its Ignition file.
+
 ## Private Network
 
 VMs making up `raya` talk to each other via a dedicated private network which

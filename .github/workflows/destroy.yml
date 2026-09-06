@@ -1,0 +1,35 @@
+name: Destroy
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type the cluster name to confirm
+        required: true
+permissions:
+  contents: read
+# Same group as Provision, so a destroy cannot race an apply.
+concurrency: provision
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}
+      TF_VAR_betterstack_token: ${{ secrets.BETTERSTACK_TOKEN }}
+      TF_VAR_gcp_terraform_credentials: ${{ secrets.GCP_TERRAFORM_CREDENTIALS }}
+      TF_VAR_sops_age_key: ${{ secrets.SOPS_AGE_KEY }}
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+    steps:
+      # The dispatch form is one click away from every other workflow's.
+      - name: Confirm
+        if: inputs.confirm != 'raya'
+        run: |
+          echo "type 'raya' to confirm" >&2
+          exit 1
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.8
+      - run: terraform init
+      - run: terraform destroy -auto-approve -var-file prod.tfvars

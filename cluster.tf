@@ -52,7 +52,8 @@ locals {
       "/", "-",
     ))
 
-    gcp_project = jsondecode(var.gcp_terraform_credentials).project_id
+    gcp_project  = jsondecode(var.gcp_terraform_credentials).project_id
+    wif_audience = local.wif_audience
 
     # Two keys, two service accounts: one for the component that publishes
     # names, one for the component that proves we own them. See dns.tf.
@@ -68,7 +69,7 @@ locals {
     # so deploy/kube-system/hello.yaml and status_page.tf share one spelling.
     # See dns.tf.
     hello_hostname = local.hello_hostname
-    oidc_hostname  = "oidc.${var.cluster_managed_subdomain}.${local.dns_parent_zone}"
+    oidc_hostname  = local.oidc_hostname
 
     sops_age_key = var.sops_age_key
   }

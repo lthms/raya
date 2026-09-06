@@ -9,3 +9,4 @@ data:
   control_plane_private_ip: "{{ private_ip }}"
   acme_email: "{{ acme_email }}"
   gcp_project: "{{ gcp_project }}"
+  wif_audience: "{{ wif_audience }}"

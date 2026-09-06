@@ -51,19 +51,17 @@ graph TB
     init["k3s-init.service<br/>writes config.yaml.d/50-public-ip.yaml"]
     mkfs["mkfs-k3s-volume.service<br/>creates a filesystem<br/>if the device has none"]
     mount["var-lib-rancher-k3s.mount<br/>/var/lib/rancher/k3s"]
-    seed["k3s-seed-pki.service<br/>reconciles the data directory<br/>with the Ignition config"]
     manifests["k3s-sync-manifests.service<br/>links the Ignition manifests<br/>into the auto-deploy directory"]
     setup(["k3s-setup.target"])
     k3s["k3s.service<br/>k3s server"]
 
     nm --> online --> init
-    mkfs --> mount --> seed --> manifests
+    mkfs --> mount --> manifests
 
     tmpfiles --> setup
     online --> setup
     init --> setup
     mount --> setup
-    seed --> setup
     manifests --> setup
     setup --> k3s
   end
@@ -75,20 +73,15 @@ graph TB
   classDef control stroke:#bf7f3f,stroke-width:2px
 
   class attach_nic,tmpfiles,nm,online,init,setup shared
-  class attach_vol,mkfs,mount,seed,manifests,k3s control
+  class attach_vol,mkfs,mount,manifests,k3s control
 ```
 
 While agents are stateless, the control plane VM carries the cluster datastore
-and its KPI. In order for them to survive a VM replacement, they are moved to
+and its PKI. In order for them to survive a VM replacement, they are moved to
 an external volume. When the volume is first created, it is bare and needs to
 be formatted. Once it is node, it also needs to be mounted, and alone then can
 `k3s` be started (if they other members of the `k3s-setup` target are ready as
 well, obviously).
-
-The control plane detects a stalled volume by comparing its provisioned secrets
-(namely, its secret token and its CA) with the one currently saved on the
-mounted volume. If they disagree, the previous cluster datastore and PKI are
-dropped completely.
 
 The manifests carried by the Ignition config are symlinked into `k3s`’
 auto-deploy directory on the volume, so that `k3s` applies them as it starts.

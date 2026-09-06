@@ -6,6 +6,7 @@
   contents:
     inline: |
       token: "{{ k3s_token }}"
+      agent-token: "{{ k3s_agent_token }}"
       node-name: {{ node_name }}
       bind-address: {{ private_ip }}
       node-ip: {{ private_ip }}

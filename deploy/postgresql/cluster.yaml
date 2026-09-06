@@ -17,6 +17,23 @@ spec:
   storage:
     size: 10Gi
 
+  # Only read when the Cluster is first created: on an existing one this stanza
+  # does nothing. It is what makes the datastore disposable -- a rebuilt cluster
+  # comes back from the object store rather than from `initdb`.
+  bootstrap:
+    recovery:
+      source: r2-archive
+
+  # Where recovery reads from. `serverName` defaults to the cluster name on both
+  # sides, so this reads the archive the previous incarnation wrote and then
+  # continues writing to it on a new timeline.
+  externalClusters:
+    - name: r2-archive
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: r2
+
   # isWALArchiver is what turns on archive_command; the operator owns it from
   # here on.
   plugins:

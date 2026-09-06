@@ -106,7 +106,11 @@
   contents: |
     [Unit]
     Description=Sync the auto-deploy manifests into the k3s data directory
-    # Ordered after the seeding, which wipes server/ when it re-bootstraps.
+    # The auto-deploy directory lives on the volume, so the links have to be
+    # written after it is mounted -- otherwise they land on the root filesystem
+    # and the mount hides them.
+    Requires=var-lib-rancher-k3s.mount
+    After=var-lib-rancher-k3s.mount
     Before=k3s-setup.target
 
     [Service]

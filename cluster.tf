@@ -68,6 +68,7 @@ locals {
     # so deploy/kube-system/hello.yaml and status_page.tf share one spelling.
     # See dns.tf.
     hello_hostname = local.hello_hostname
+    oidc_hostname  = "oidc.${var.cluster_managed_subdomain}.${local.dns_parent_zone}"
 
     sops_age_key = var.sops_age_key
   }

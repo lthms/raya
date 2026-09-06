@@ -6,7 +6,7 @@
   contents:
     inline: |
       server: https://{{ control_plane_private_ip }}:6443
-      token: "{{ k3s_token }}"
+      token: "{{ k3s_agent_token }}"
       node-name: {{ node_name }}
       node-ip: {{ private_ip }}
       flannel-iface: enp7s0

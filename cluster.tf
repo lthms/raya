@@ -23,6 +23,11 @@ resource "random_password" "k3s_token" {
   special = false
 }
 
+resource "random_password" "k3s_agent_token" {
+  length  = 48
+  special = false
+}
+
 locals {
   control_plane_volume_device = "/dev/disk/by-id/scsi-0HC_Volume_${hcloud_volume.control_plane_k3s.id}"
 }
@@ -36,6 +41,7 @@ locals {
     private_gateway = local.private_gateway
     authorized_keys = local.authorized_keys
     k3s_token       = random_password.k3s_token.result
+    k3s_agent_token = random_password.k3s_agent_token.result
 
     k3s_volume_device = local.control_plane_volume_device
     # systemd derives a .device unit name from the path by escaping `-` as
@@ -153,8 +159,7 @@ locals {
     private_gateway          = local.private_gateway
     authorized_keys          = local.authorized_keys
 
-    # RESP: checking what the agent template and pki.tf referenced...
-    k3s_token = "${random_password.k3s_token.result}"
+    k3s_agent_token = random_password.k3s_agent_token.result
   }
 }
 
@@ -208,7 +213,7 @@ data "jinja_template" "agents" {
       node_name  = local.agents_names[count.index]
 
       # Derived from the name, not random. See templates/agent.bu.j2.
-      node_password = sha256("${random_password.k3s_token.result}:${local.agents_names[count.index]}")
+      node_password = sha256("${random_password.k3s_agent_token.result}:${local.agents_names[count.index]}")
     })))
   }
 

@@ -11,6 +11,8 @@ locals {
   # to declare a monitor, and it reaches the Ingress through the cluster-vars
   # ConfigMap that Flux substitutes into deploy/kube-system.
   hello_hostname = "h.${var.cluster_managed_subdomain}.${local.dns_parent_zone}"
+
+  oidc_hostname = "oidc.${var.cluster_managed_subdomain}.${local.dns_parent_zone}"
 }
 
 resource "google_dns_managed_zone" "primary" {

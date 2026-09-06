@@ -11,7 +11,6 @@ metadata:
   name: oidc-discovery
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
-    traefik.ingress.kubernetes.io/service.serverstransport: default-apiserver@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:
@@ -24,10 +23,43 @@ spec:
         paths:
           - path: /.well-known/openid-configuration
             pathType: Exact
-            backend: { service: { name: kubernetes, port: { number: 443 } } }
+            backend: { service: { name: apiserver, port: { number: 6443 } } }
           - path: /openid/v1/jwks
             pathType: Exact
-            backend: { service: { name: kubernetes, port: { number: 443 } } }
+            backend: { service: { name: apiserver, port: { number: 6443 } } }
+---
+# The API server, addressed through a Service of our own. Traefik reads its
+# `service.*` annotations off the Service and never off the Ingress, and the
+# built-in `kubernetes` Service cannot carry them: it is apiserver-managed, so
+# Flux would end up owning -- and pruning -- a core object.
+apiVersion: v1
+kind: Service
+metadata:
+  name: apiserver
+  annotations:
+    traefik.ingress.kubernetes.io/service.serversscheme: https
+    traefik.ingress.kubernetes.io/service.serverstransport: default-apiserver@kubernetescrd
+spec:
+  ports:
+    - port: 6443
+---
+# No selector, so the endpoint is written by hand. The control plane is a
+# singleton at a fixed address; see local.control_plane_private_ip in
+# network.tf. TODO: hand it over through cluster-vars instead.
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: apiserver
+  labels:
+    kubernetes.io/service-name: apiserver
+addressType: IPv4
+ports:
+  - port: 6443
+endpoints:
+  - addresses:
+      - 10.0.1.10
+    conditions:
+      ready: true
 ---
 # Traefik reaches the API server over HTTPS with the cluster's own CA, which no
 # public bundle knows. kube-root-ca.crt is projected into every namespace, so

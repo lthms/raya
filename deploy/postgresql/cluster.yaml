@@ -24,15 +24,14 @@ spec:
     recovery:
       source: r2-archive
 
-  # Where recovery reads from. `serverName` defaults to the cluster name on both
-  # sides, so this reads the archive the previous incarnation wrote and then
-  # continues writing to it on a new timeline.
+  # Where recovery reads from: the archive the previous incarnation wrote.
   externalClusters:
     - name: r2-archive
       plugin:
         name: barman-cloud.cloudnative-pg.io
         parameters:
           barmanObjectName: r2
+          serverName: postgresql
 
   # isWALArchiver is what turns on archive_command; the operator owns it from
   # here on.
@@ -41,6 +40,9 @@ spec:
       isWALArchiver: true
       parameters:
         barmanObjectName: r2
+        # Bumped on every restore. barman refuses to archive into a server path
+        # that already holds another cluster's WALs.
+        serverName: postgresql-2
 
   # A memory limit only helps if Postgres is told to stay under it. CNPG sets
   # no shared_buffers or max_connections of its own, so both are Postgres'

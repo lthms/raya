@@ -46,14 +46,6 @@ locals {
       "/", "-",
     ))
 
-    # Seeded into /var/lib/rancher/k3s/server/tls before k3s first starts, so
-    # the cluster's trust root comes from here rather than from the node. See
-    # pki.tf.
-    server_ca_cert = tls_self_signed_cert.server_ca.cert_pem
-    server_ca_key  = tls_private_key.server_ca.private_key_pem
-    client_ca_cert = tls_self_signed_cert.client_ca.cert_pem
-    client_ca_key  = tls_private_key.client_ca.private_key_pem
-
     gcp_project = jsondecode(var.gcp_terraform_credentials).project_id
 
     # Two keys, two service accounts: one for the component that publishes
@@ -161,9 +153,8 @@ locals {
     private_gateway          = local.private_gateway
     authorized_keys          = local.authorized_keys
 
-    # Full form join token `K10<CA hash>::<user>:<secret>`, see
-    # https://github.com/k3s-io/k3s/blob/v1.36.3%2Bk3s1/pkg/clientaccess/token.go
-    k3s_token = "K10${sha256(tls_self_signed_cert.server_ca.cert_pem)}::server:${random_password.k3s_token.result}"
+    # RESP: checking what the agent template and pki.tf referenced...
+    k3s_token = "${random_password.k3s_token.result}"
   }
 }
 

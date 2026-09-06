@@ -13,6 +13,9 @@
       advertise-address: {{ private_ip }}
       flannel-iface: enp7s0
       disable: local-storage
+      kube-apiserver-arg:
+        - service-account-issuer-=https://{{ oidc_hostname }}
+        - service-account-jwks-uri=https://{{ oidc_hostname }}/openid/v1/jwks
 
 - path: /usr/local/bin/k3s-sync-manifests.sh
   mode: 0755

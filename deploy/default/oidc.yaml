@@ -1,0 +1,42 @@
+---
+# Publishes the two OpenID Connect discovery documents the API server serves, so
+# an outside verifier can check a token this cluster signed. Only those two
+# paths, matched exactly: a prefix rule here would put the whole API server
+# behind Traefik.
+#
+# See deploy/cluster/oidc.yaml for the binding that lets them be read.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oidc-discovery
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    traefik.ingress.kubernetes.io/service.serverstransport: default-apiserver@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - ${oidc_hostname}
+      secretName: oidc-tls
+  rules:
+    - host: ${oidc_hostname}
+      http:
+        paths:
+          - path: /.well-known/openid-configuration
+            pathType: Exact
+            backend: { service: { name: kubernetes, port: { number: 443 } } }
+          - path: /openid/v1/jwks
+            pathType: Exact
+            backend: { service: { name: kubernetes, port: { number: 443 } } }
+---
+# Traefik reaches the API server over HTTPS with the cluster's own CA, which no
+# public bundle knows. kube-root-ca.crt is projected into every namespace, so
+# there is nothing to create.
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: apiserver
+spec:
+  serverName: kubernetes.default.svc
+  rootCAs:
+    - configMap: kube-root-ca.crt

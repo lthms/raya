@@ -6,5 +6,6 @@ metadata:
 data:
   hello_hostname: "{{ hello_hostname }}"
   oidc_hostname: "{{ oidc_hostname }}"
+  control_plane_private_ip: "{{ private_ip }}"
   acme_email: "{{ acme_email }}"
   gcp_project: "{{ gcp_project }}"

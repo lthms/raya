@@ -16,6 +16,24 @@
       kube-apiserver-arg:
         - service-account-issuer-=https://{{ oidc_hostname }}
         - service-account-jwks-uri=https://{{ oidc_hostname }}/openid/v1/jwks
+        - authentication-config=/etc/rancher/k3s/authentication-config.yaml
+
+# k3s sets `anonymous-auth=false` unless this file exists, and then steps back
+# and lets it decide. Anonymous is granted for the two discovery paths and
+# nothing else, so every other path stays a 401 for an unauthenticated caller.
+# The identity is all this grants; RBAC still has to authorise it, which
+# deploy/cluster/oidc.yaml does.
+- path: /etc/rancher/k3s/authentication-config.yaml
+  mode: 0644
+  contents:
+    inline: |
+      apiVersion: apiserver.config.k8s.io/v1
+      kind: AuthenticationConfiguration
+      anonymous:
+        enabled: true
+        conditions:
+          - path: /.well-known/openid-configuration
+          - path: /openid/v1/jwks
 
 - path: /usr/local/bin/k3s-sync-manifests.sh
   mode: 0755

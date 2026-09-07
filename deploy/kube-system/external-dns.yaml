@@ -4,7 +4,7 @@
 # address of every node — so one name becomes one A record per node.
 #
 # Cloud DNS is one of the providers external-dns speaks natively, so there is no
-# webhook sidecar here — only a service account key, scoped to the one zone.
+# webhook sidecar here — only a federated identity, scoped to the one zone.
 # `--policy=sync` and the TXT registry are what let it delete again what it
 # created.
 ---
@@ -40,6 +40,26 @@ subjects:
   - kind: ServiceAccount
     name: external-dns
     namespace: kube-system
+---
+# How the Google client library federates. Impersonates the `external-dns`
+# service account. See wif.tf and dns.tf.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-dns-wif
+data:
+  credentials.json: |
+    {
+      "type": "external_account",
+      "audience": "${wif_audience}",
+      "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+      "token_url": "https://sts.googleapis.com/v1/token",
+      "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/external-dns@${gcp_project}.iam.gserviceaccount.com:generateAccessToken",
+      "credential_source": {
+        "file": "/var/run/secrets/gcp/token",
+        "format": { "type": "text" }
+      }
+    }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -88,12 +108,22 @@ spec:
             - name: credentials
               mountPath: /etc/secrets/google
               readOnly: true
+            - name: gcp-token
+              mountPath: /var/run/secrets/gcp
+              readOnly: true
           resources:
             requests:
               cpu: 10m
               memory: 128Mi
       volumes:
         - name: credentials
-          secret:
-            secretName: gcp-dns
+          configMap:
+            name: gcp-dns-wif
+        - name: gcp-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: ${wif_audience}
+                  expirationSeconds: 3600
+                  path: token
 

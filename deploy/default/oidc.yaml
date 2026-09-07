@@ -10,7 +10,11 @@ kind: Ingress
 metadata:
   name: oidc-discovery
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt
+    # HTTP-01, not the DNS-01 default: this certificate is what makes DNS-01
+    # possible. See deploy/cluster/cluster-issuer.yaml.
+    cert-manager.io/cluster-issuer: letsencrypt-http01
+    # And the A record is Terraform's for the same reason. See dns.tf.
+    external-dns.alpha.kubernetes.io/controller: none
 spec:
   ingressClassName: traefik
   tls:

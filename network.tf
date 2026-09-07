@@ -43,7 +43,7 @@ resource "hcloud_firewall" "nodes" {
   }
 
   # Traefik runs as a DaemonSet behind ServiceLB, so every node answers on both
-  # ports, control plane included. 80 only redirects — ACME is DNS-01.
+  # ports, control plane included
   rule {
     direction  = "in"
     protocol   = "tcp"

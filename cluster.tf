@@ -55,9 +55,8 @@ locals {
     gcp_project  = jsondecode(var.gcp_terraform_credentials).project_id
     wif_audience = local.wif_audience
 
-    # Two keys, two service accounts: one for the component that publishes
-    # names, one for the component that proves we own them. See dns.tf.
-    gcp_dns_credentials      = google_service_account_key.external_dns.private_key
+    # cert-manager's DNS-01 solver. The component that publishes names
+    # federates instead. See dns.tf.
     gcp_acme_dns_credentials = google_service_account_key.cert_manager.private_key
 
     acme_email = local.acme_email

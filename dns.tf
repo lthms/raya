@@ -61,13 +61,11 @@ resource "google_dns_record_set" "oidc" {
   )
 }
 
+# No key: external-dns proves who it is with a token this cluster signed, and
+# impersonates this account. See wif.tf.
 resource "google_service_account" "external_dns" {
   account_id   = "external-dns"
   display_name = "external-dns, publishing the names raya's Ingresses claim"
-}
-
-resource "google_service_account_key" "external_dns" {
-  service_account_id = google_service_account.external_dns.name
 }
 
 resource "google_project_iam_member" "external_dns" {

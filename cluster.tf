@@ -55,10 +55,6 @@ locals {
     gcp_project  = jsondecode(var.gcp_terraform_credentials).project_id
     wif_audience = local.wif_audience
 
-    # cert-manager's DNS-01 solver. The component that publishes names
-    # federates instead. See dns.tf.
-    gcp_acme_dns_credentials = google_service_account_key.cert_manager.private_key
-
     acme_email = local.acme_email
 
     # The zone the cluster's own names are built under. See dns.tf.

@@ -77,15 +77,12 @@ resource "google_project_iam_member" "external_dns" {
 # cert-manager answers ACME DNS-01 challenges by writing a TXT record under the
 # name it is proving control of, which is a strict subset of what external-dns
 # does — but Cloud DNS has no role narrow enough to express that, so both end up
-# with `dns.admin`. A second identity is still worth the two resources: it can be
-# rotated on its own, and the audit log attributes each write.
+# with `dns.admin`. A second identity is still worth the resource: the audit log
+# attributes each write, and wif.tf grants impersonation one account at a time,
+# so this one can be revoked without taking external-dns down with it.
 resource "google_service_account" "cert_manager" {
   account_id   = "cert-manager"
   display_name = "cert-manager, answering ACME challenges for raya's certificates"
-}
-
-resource "google_service_account_key" "cert_manager" {
-  service_account_id = google_service_account.cert_manager.name
 }
 
 resource "google_project_iam_member" "cert_manager" {

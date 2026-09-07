@@ -63,12 +63,6 @@
     inline: |
 {% filter trim|indent(6, true) %}{% include "manifests/traefik-config.yaml" %}{% endfilter %}
 
-- path: /etc/rancher/k3s/manifests/gcp-dns-secret.yaml
-  mode: 0600
-  contents:
-    inline: |
-{% filter trim|indent(6, true) %}{% include "manifests/gcp-dns-secret.yaml" %}{% endfilter %}
-
 - path: /etc/rancher/k3s/manifests/flux.yaml
   mode: 0644
   contents:

@@ -1,4 +1,25 @@
 # cert-manager issues the certificates the `websecure` entrypoint serves.
+---
+# Impersonates the `cert-manager` service account, which is where `dns.admin`
+# lives.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-acme-dns-wif
+data:
+  credentials.json: |
+    {
+      "type": "external_account",
+      "audience": "${wif_audience}",
+      "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+      "token_url": "https://sts.googleapis.com/v1/token",
+      "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/cert-manager@${gcp_project}.iam.gserviceaccount.com:generateAccessToken",
+      "credential_source": {
+        "file": "/var/run/secrets/gcp/token",
+        "format": { "type": "text" }
+      }
+    }
+---
 apiVersion: helm.cattle.io/v1
 kind: HelmChart
 metadata:
@@ -16,6 +37,27 @@ spec:
     extraArgs:
       - --dns01-recursive-nameservers-only
       - --dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53
+    extraEnv:
+      - name: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/google/credentials.json
+    volumes:
+      - name: credentials
+        configMap:
+          name: gcp-acme-dns-wif
+      - name: gcp-token
+        projected:
+          sources:
+            - serviceAccountToken:
+                audience: ${wif_audience}
+                expirationSeconds: 3600
+                path: token
+    volumeMounts:
+      - name: credentials
+        mountPath: /etc/secrets/google
+        readOnly: true
+      - name: gcp-token
+        mountPath: /var/run/secrets/gcp
+        readOnly: true
     resources:
       requests:
         cpu: 10m

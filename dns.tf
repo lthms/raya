@@ -46,6 +46,21 @@ resource "google_dns_record_set" "agents" {
   rrdatas = [hcloud_server.agents[count.index].ipv4_address]
 }
 
+# Any node is a valid target: Traefik is a DaemonSet behind ServiceLB.
+resource "google_dns_record_set" "oidc" {
+  managed_zone = google_dns_managed_zone.primary.name
+  name         = "oidc.${google_dns_managed_zone.primary.dns_name}"
+  type         = "A"
+
+  # Short TTL for the same reason as above.
+  ttl = 300
+
+  rrdatas = concat(
+    [hcloud_server.control_plane.ipv4_address],
+    hcloud_server.agents[*].ipv4_address,
+  )
+}
+
 resource "google_service_account" "external_dns" {
   account_id   = "external-dns"
   display_name = "external-dns, publishing the names raya's Ingresses claim"

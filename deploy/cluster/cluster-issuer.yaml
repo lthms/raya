@@ -15,9 +15,6 @@ spec:
       - dns01:
           cloudDNS:
             project: ${gcp_project}
-            serviceAccountSecretRef:
-              name: gcp-acme-dns
-              key: credentials.json
 
 ---
 # The bootstrap issuer used for the `oidc` name is its only customer. DNS-01

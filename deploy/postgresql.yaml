@@ -21,6 +21,4 @@ spec:
   # r2-secret.yaml holds the R2 credentials barman-cloud backs up with.
   decryption:
     provider: sops
-    secretRef:
-      name: sops-age
 

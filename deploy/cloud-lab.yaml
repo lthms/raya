@@ -27,5 +27,3 @@ spec:
     name: cloud-lab
   decryption:
     provider: sops
-    secretRef:
-      name: sops-age

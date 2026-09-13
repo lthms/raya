@@ -65,8 +65,6 @@ locals {
     # See dns.tf.
     hello_hostname = local.hello_hostname
     oidc_hostname  = local.oidc_hostname
-
-    sops_age_key = var.sops_age_key
   }
 }
 

@@ -1,0 +1,19 @@
+---
+# Flux fetches its own cloud authentication settings without SOPS or Ignition
+# changes.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-decryption
+spec:
+  interval: 10m
+  path: ./deploy/flux-decryption
+  targetNamespace: kube-system
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: raya
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

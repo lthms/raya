@@ -31,3 +31,9 @@ resource "google_service_account_iam_member" "cert_manager" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "principal://iam.googleapis.com/${google_iam_workload_identity_pool.raya_pool.name}/subject/system:serviceaccount:kube-system:cert-manager"
 }
+
+resource "google_service_account_iam_member" "kustomize_controller" {
+  service_account_id = google_service_account.kustomize_controller.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principal://iam.googleapis.com/${google_iam_workload_identity_pool.raya_pool.name}/subject/system:serviceaccount:flux-system:kustomize-controller"
+}

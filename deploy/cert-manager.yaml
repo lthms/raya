@@ -1,0 +1,33 @@
+# Install cert-manager without depending on encrypted kube-system secrets.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cert-manager
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./deploy/cert-manager
+  targetNamespace: kube-system
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: raya
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  # k3s installs the HelmChart asynchronously; wait for its actual workloads.
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: cert-manager
+      namespace: kube-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: cert-manager-cainjector
+      namespace: kube-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: cert-manager-webhook
+      namespace: kube-system

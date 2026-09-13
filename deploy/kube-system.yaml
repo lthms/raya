@@ -4,6 +4,8 @@ metadata:
   name: kube-system
 spec:
   interval: 10m
+  dependsOn:
+    - name: oidc
   path: ./deploy/kube-system
   targetNamespace: kube-system
   prune: true

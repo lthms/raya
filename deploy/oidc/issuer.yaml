@@ -1,0 +1,16 @@
+# The bootstrap issuer used for the `oidc` name is its only customer. DNS-01
+# needs a GCP credential, which requires this public OIDC endpoint.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-http01
+spec:
+  acme:
+    email: ${acme_email}
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-http01-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik

@@ -4,14 +4,15 @@
 # paths, matched exactly: a prefix rule here would put the whole API server
 # behind Traefik.
 #
-# See deploy/cluster/oidc.yaml for the binding that lets them be read.
+# See rbac.yaml for the binding that lets them be read.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: oidc-discovery
+  namespace: default
   annotations:
     # HTTP-01, not the DNS-01 default: this certificate is what makes DNS-01
-    # possible. See deploy/cluster/cluster-issuer.yaml.
+    # possible. See issuer.yaml.
     cert-manager.io/cluster-issuer: letsencrypt-http01
     # And the A record is Terraform's for the same reason. See dns.tf.
     external-dns.alpha.kubernetes.io/controller: none
@@ -40,6 +41,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: apiserver
+  namespace: default
   annotations:
     traefik.ingress.kubernetes.io/service.serversscheme: https
     traefik.ingress.kubernetes.io/service.serverstransport: default-apiserver@kubernetescrd
@@ -54,6 +56,7 @@ apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
   name: apiserver
+  namespace: default
   labels:
     kubernetes.io/service-name: apiserver
 addressType: IPv4
@@ -72,6 +75,7 @@ apiVersion: traefik.io/v1alpha1
 kind: ServersTransport
 metadata:
   name: apiserver
+  namespace: default
 spec:
   serverName: kubernetes.default.svc
   rootCAs:

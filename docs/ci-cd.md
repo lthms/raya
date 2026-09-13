@@ -114,7 +114,6 @@ deployment, several repository secrets were created:
 | `HCLOUD_TOKEN` | Authentication to Hetzner Cloud |
 | `BETTERSTACK_TOKEN` | Authentication to BetterStack |
 | `GCP_TERRAFORM_CREDENTIALS` | Authentication to Google Cloud, for Cloud DNS |
-| `SOPS_AGE_KEY` | The age private key, handed to the cluster so Flux can decrypt the encrypted manifests in `deploy/` |
 
 
 These secrets are exposed to both provisioning workflows

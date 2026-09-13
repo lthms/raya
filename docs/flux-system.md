@@ -30,29 +30,27 @@ Three of the chart’s six controllers are installed. `source-controller` and
 
 [Flux]: https://fluxcd.io/
 
-## The SOPS secret
+## SOPS decryption
 
 Flux pulls from public repositories, so any secret a workload needs and cannot
 derive (an API token, a bucket key, etc.) has to be committed. [SOPS] encrypts
 those values in place, and Flux decrypts them on its way into the cluster.
 
-The keypair is asymmetric. The public key is committed in `.sops.yaml`, so
-anyone with a checkout can encrypt a new credential. The private key never
-lands in the repository. It is a Terraform input (`var.sops_age_key`, fed from
-the `SOPS_AGE_KEY` repository secret). The control plane’s Ignition config
-writes it into the cluster as the `sops-age` `Secret` in `flux-system` (see
-`templates/manifests/sops-age-secret.yaml`).
+`.sops.yaml` selects the Google Cloud KMS key `raya-sops/sops` in
+`europe-west4`. Each encrypted file stores its data key wrapped by that KMS key.
+Flux authenticates through workload identity: `kms.tf` grants its Google
+service account permission to decrypt, and `wif.tf` permits the Kubernetes
+service account to use it. `deploy/flux-decryption/helm-config.yaml` configures
+that identity as the controller's default for decryption.
 
 [SOPS]: https://github.com/getsops/sops
 
-A `Kustomization` opts into decryption by naming the Secret:
+A `Kustomization` opts into decryption using the controller's default identity:
 
 ```yaml
 spec:
   decryption:
     provider: sops
-    secretRef:
-      name: sops-age
 ```
 
 See `deploy/kube-system.yaml`, `deploy/postgresql.yaml` and
@@ -67,6 +65,6 @@ sops -e -i deploy/postgresql/r2-secret.yaml
 ```
 
 Editing one later is `sops deploy/postgresql/r2-secret.yaml`, which decrypts to
-a temporary file, opens `$EDITOR`, and re-encrypts on save. Both need the
-private key locally, in `SOPS_AGE_KEY_FILE` or `~/.config/sops/age/keys.txt`.
+a temporary file, opens `$EDITOR`, and re-encrypts on save. Local editing
+requires Google credentials with KMS encrypt and decrypt permissions for that key.
 `sops` itself is pinned in `mise.toml`.

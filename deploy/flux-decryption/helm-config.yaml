@@ -1,0 +1,18 @@
+# Matches the HelmChart installed by Ignition; k3s merges these extra values.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: flux
+spec:
+  valuesContent: |
+    kustomizeController:
+      container:
+        additionalArgs:
+          - --feature-gates=ObjectLevelWorkloadIdentity=true
+          - --default-decryption-service-account=kustomize-controller
+      serviceAccount:
+        annotations:
+          iam.gke.io/gcp-service-account: kustomize-controller@${gcp_project}.iam.gserviceaccount.com
+          # Flux expects the provider resource name without "//iam.googleapis.com/".
+          # That prefix is 21 characters; reuse the audience already in cluster-vars.
+          gcp.auth.fluxcd.io/workload-identity-provider: ${wif_audience:21}

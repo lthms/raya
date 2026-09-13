@@ -1,6 +1,6 @@
 ---
 # The discovery documents are served to whoever asks, so the Ingress in
-# deploy/default can be reached without credentials. The ClusterRole is narrow
+# deploy/oidc can be reached without credentials. The ClusterRole is narrow
 # by construction: `get` on those two paths and nothing else.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

@@ -1,0 +1,26 @@
+# Public OIDC must work before any KMS-encrypted manifests can reconcile.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: oidc
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 10m
+  dependsOn:
+    - name: cert-manager
+  path: ./deploy/oidc
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: raya
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  # Ingress-shim creates this Certificate from the OIDC Ingress.
+  healthChecks:
+    - apiVersion: cert-manager.io/v1
+      kind: Certificate
+      name: oidc-tls
+      namespace: default

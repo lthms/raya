@@ -11,3 +11,4 @@ jobs:
       - uses: ./.github/actions/validate-manifests
         with:
           paths: deploy deploy/*
+          flux-source: raya

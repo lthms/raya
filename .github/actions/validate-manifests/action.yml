@@ -9,6 +9,20 @@ inputs:
       Whitespace-separated directories holding a kustomization.yaml. Globs are
       expanded, and a directory without one is skipped.
     default: "."
+  flux-source:
+    description: >
+      GitRepository name in Raya's deploy/ Flux configuration. Match each path
+      to its parent Flux Kustomization and apply its build settings. Leave
+      empty for standalone chart fixtures. Cluster Secret/ConfigMap
+      substitutions and SOPS decryption are unavailable.
+    default: ""
+  render-helm:
+    description: >
+      Render HelmReleases with flate and validate their generated resources too.
+      Each path must include the releases and their sources/values dependencies.
+      Suspended releases and sources are enabled only in temporary CI inputs.
+      Requires reachable chart sources; does not decrypt SOPS values.
+    default: "true"
 
 runs:
   using: composite
@@ -16,6 +30,25 @@ runs:
     - uses: azure/setup-kubectl@v4
       with:
         version: v1.36.3
+
+    - name: Install Flux CLI
+      if: inputs.flux-source != ''
+      uses: fluxcd/flux2/action@v2.9.5
+      with:
+        version: "2.9.5"
+
+    - name: Install flate
+      if: inputs.render-helm == 'true'
+      uses: home-operations/flate/action@v0.6.5
+      with:
+        version: "0.6.5"
+        # The installer otherwise exports the default branch as FLATE_BASE.
+        base: ""
+
+    - name: Install YAML support for isolated validation inputs
+      if: inputs.render-helm == 'true' || inputs.flux-source != ''
+      shell: bash
+      run: python3 -m pip install PyYAML==6.0.3
 
     - name: Install flux-schema
       shell: bash
@@ -54,20 +87,115 @@ runs:
       shell: bash
       env:
         PATHS: ${{ inputs.paths }}
+        RENDER_HELM: ${{ inputs.render-helm }}
+        FLUX_SOURCE: ${{ inputs.flux-source }}
       run: |
         set -euo pipefail
+        validation_dir="$(mktemp -d "${RUNNER_TEMP}/validate-manifests.XXXXXX")"
+        trap 'rm -rf -- "$validation_dir"' EXIT
+        validate() {
+            flux-schema validate \
+                --schema-location default \
+                --schema-location ecosystem \
+                --schema-location "${RUNNER_TEMP}/crd-schemas" \
+                --skip-json-path v1/Secret:/sops \
+                --verbose
+        }
+        if [[ -n "$FLUX_SOURCE" ]]; then
+            kubectl kustomize "${GITHUB_ACTION_PATH}/../../../deploy" > "$validation_dir/parents.yaml"
+        fi
         # Deliberately unquoted, so the globs in PATHS expand.
+        index=0
         for directory in ${PATHS}; do
             [ -f "${directory}/kustomization.yaml" ] || continue
             echo "::group::${directory}"
+            index=$((index + 1))
+            manifests="$validation_dir/$index.yaml"
+            if [[ -n "$FLUX_SOURCE" ]]; then
+                python3 - "$directory" "$validation_dir/parents.yaml" "$validation_dir/parent.yaml" > "$manifests" <<'PY'
+        import os
+        import subprocess
+        import sys
+        from pathlib import Path
+        import yaml
 
-            kubectl kustomize "${directory}" \
-                | flux-schema validate \
-                    --schema-location default \
-                    --schema-location ecosystem \
-                    --schema-location "${RUNNER_TEMP}/crd-schemas" \
-                    --skip-json-path v1/Secret:/sops \
-                    --verbose
+        directory, parents_file, parent_file = map(Path, sys.argv[1:])
+        matches = []
+        for doc in yaml.safe_load_all(parents_file.read_text()):
+            if not doc or doc.get("kind") != "Kustomization":
+                continue
+            if not doc.get("apiVersion", "").startswith("kustomize.toolkit.fluxcd.io/"):
+                continue
+            spec = doc["spec"]
+            source = spec["sourceRef"]
+            if (source["kind"] == "GitRepository"
+                    and source["name"] == os.environ["FLUX_SOURCE"]
+                    and Path(spec.get("path", ".")).resolve() == directory.resolve()):
+                matches.append(doc)
+        # Raya's deploy/ root contains the parent objects themselves.
+        config_root = (Path(os.environ["GITHUB_ACTION_PATH"]) / "../../../deploy").resolve()
+        if not matches and directory.resolve() == config_root:
+            subprocess.run(["kubectl", "kustomize", str(directory)], check=True)
+        else:
+            if len(matches) != 1:
+                raise SystemExit(f"{directory}: expected one Flux parent, found {len(matches)}")
+            parent = matches[0]
+            if parent["spec"].get("postBuild", {}).get("substituteFrom"):
+                print(f"::warning::{directory}: dry-run skips cluster-backed substituteFrom", file=sys.stderr)
+            parent_file.write_text(yaml.safe_dump(parent))
+            subprocess.run([
+                "flux", "build", "kustomization", parent["metadata"]["name"],
+                "--namespace", parent["metadata"].get("namespace", "flux-system"),
+                "--dry-run", "--in-memory-build",
+                "--kustomization-file", str(parent_file), "--path", str(directory),
+            ], check=True)
+        PY
+            else
+                kubectl kustomize "${directory}" > "$manifests"
+            fi
+            validate < "$manifests"
 
+            if [[ "$RENDER_HELM" == true ]]; then
+                helm_input="$validation_dir/helm-$index"
+                mkdir "$helm_input"
+                # flate resolves sources and renders charts. This preparation only
+                # isolates Helm inputs and clears suspension without editing Git.
+                python3 - "$manifests" "$helm_input/resources.yaml" <<'PY'
+        import sys
+        from pathlib import Path
+        import yaml
+
+        docs = []
+        for doc in yaml.safe_load_all(Path(sys.argv[1]).read_text()):
+            if not doc:
+                continue
+            api = doc.get("apiVersion", "")
+            kind = doc.get("kind")
+            is_release = api.startswith("helm.toolkit.fluxcd.io/") and kind == "HelmRelease"
+            is_source = api.startswith("source.toolkit.fluxcd.io/")
+            is_values = api == "v1" and kind in ("Secret", "ConfigMap", "Namespace")
+            if is_release or is_source:
+                doc.setdefault("spec", {})["suspend"] = False
+            if is_release or is_source or is_values:
+                docs.append(doc)
+        if any(d.get("kind") == "HelmRelease" for d in docs):
+            Path(sys.argv[2]).write_text(yaml.safe_dump_all(docs))
+        PY
+                if [[ -f "$helm_input/resources.yaml" ]]; then
+                    rendered="$validation_dir/helm-$index.yaml"
+                    # Render all inputs; override any inherited FLATE_BASE.
+                    flate build hr --path "$helm_input" --base="" \
+                        --skip-secrets=false --skip-crds=false > "$rendered"
+                    # A successful command with no output must not silently pass.
+                    python3 - "$rendered" <<'PY'
+        import sys
+        from pathlib import Path
+        import yaml
+        if not any(yaml.safe_load_all(Path(sys.argv[1]).read_text())):
+            raise SystemExit("HelmReleases were found but flate rendered no resources")
+        PY
+                    validate < "$rendered"
+                fi
+            fi
             echo "::endgroup::"
         done

@@ -21,9 +21,42 @@ spec:
   dependsOn:
     - name: cluster
     - name: postgresql
+    - name: mediawiki-prerequisites
   prune: true
   sourceRef:
     kind: GitRepository
     name: cloud-lab
+  decryption:
+    provider: sops
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: raya-mediawiki
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://github.com/lthms/raya-mediawiki
+  ref:
+    branch: main
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: mediawiki-prerequisites
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  dependsOn:
+    - name: cluster
+    - name: flux-decryption
+  path: ./shared
+  targetNamespace: cloud-lab
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: raya-mediawiki
   decryption:
     provider: sops

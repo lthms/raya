@@ -15,7 +15,7 @@ metadata:
     # possible. See issuer.yaml.
     cert-manager.io/cluster-issuer: letsencrypt-http01
     # And the A record is Terraform's for the same reason. See dns.tf.
-    external-dns.alpha.kubernetes.io/controller: none
+    external-dns.kubernetes.io/controller: none
 spec:
   ingressClassName: traefik
   tls:

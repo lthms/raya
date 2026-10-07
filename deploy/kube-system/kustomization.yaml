@@ -5,7 +5,7 @@ resources:
   - external-dns.yaml
   - hcloud-csi.yaml
   - hcloud-csi-secret.yaml
-  - node-reaper.yaml
+  - sisu.yaml
   - hello.yaml
 configMapGenerator:
   - name: cluster-fleet

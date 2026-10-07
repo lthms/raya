@@ -1,0 +1,28 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: sisu
+spec:
+  interval: 1h
+  url: https://github.com/lthms/sisu
+  ref:
+    commit: ace38cdf9e103d2022e01f85415fac7e5cc28be6
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sisu
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: ./charts/sisu
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: sisu
+      interval: 1h
+  values:
+    image:
+      repository: ghcr.io/lthms/sisu
+      tag: dev-ace38cdf9e103d2022e01f85415fac7e5cc28be6

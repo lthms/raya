@@ -9,7 +9,7 @@ terraform {
   required_providers {
     hcloud = {
       source  = "hetznercloud/hcloud"
-      version = "1.64.0"
+      version = "1.70.0"
     }
     ct = {
       source  = "poseidon/ct"
@@ -17,11 +17,11 @@ terraform {
     }
     betteruptime = {
       source  = "BetterStackHQ/better-uptime"
-      version = "0.21.13"
+      version = "0.22.4"
     }
     http = {
       source  = "hashicorp/http"
-      version = "3.5.0"
+      version = "3.6.2"
     }
     jinja = {
       source  = "NikolaLohinski/jinja"
@@ -29,15 +29,15 @@ terraform {
     }
     random = {
       source  = "hashicorp/random"
-      version = "3.9.0"
+      version = "3.9.1"
     }
     tls = {
       source  = "hashicorp/tls"
-      version = "4.3.0"
+      version = "4.4.1"
     }
     google = {
       source  = "hashicorp/google"
-      version = "7.45.0"
+      version = "7.46.1"
     }
   }
 }

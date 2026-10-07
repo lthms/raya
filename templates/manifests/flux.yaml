@@ -7,7 +7,7 @@ metadata:
 spec:
   repo: https://fluxcd-community.github.io/helm-charts
   chart: flux2
-  version: 2.19.0
+  version: 2.19.1
   targetNamespace: flux-system
   createNamespace: true
   valuesContent: |

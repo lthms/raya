@@ -6,7 +6,7 @@ spec:
   interval: 1h
   url: https://github.com/lthms/sisu
   ref:
-    commit: 4697d8d5f91561f3f98fd502256847aa580c9216
+    commit: 7c9a27b7ebda6ad2bda2e3f6c5379b113a37538f
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -25,4 +25,4 @@ spec:
   values:
     image:
       repository: ghcr.io/lthms/sisu
-      tag: dev-4697d8d5f91561f3f98fd502256847aa580c9216
+      tag: dev-7c9a27b7ebda6ad2bda2e3f6c5379b113a37538f

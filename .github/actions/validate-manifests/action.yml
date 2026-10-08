@@ -27,15 +27,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: azure/setup-kubectl@v4
+    - uses: azure/setup-kubectl@v5
       with:
         version: v1.36.3
 
     - name: Install Flux CLI
       if: inputs.flux-source != ''
-      uses: fluxcd/flux2/action@v2.9.5
+      uses: fluxcd/flux2/action@v2.9.6
       with:
-        version: "2.9.5"
+        version: "2.9.6"
 
     - name: Install flate
       if: inputs.render-helm == 'true'
